@@ -1,5 +1,8 @@
 # Python Habit Tracker
 
+[![Test](https://github.com/RafyTime/python-habit-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/RafyTime/python-habit-tracker/actions/workflows/ci.yml)
+[![Coverage](https://coverage-badge.samuelcolvin.workers.dev/RafyTime/python-habit-tracker.svg)](https://coverage-badge.samuelcolvin.workers.dev/redirect/RafyTime/python-habit-tracker)
+
 A simple command-line habit tracker built with Python and Typer.
 
 Part of the IU **Object-Oriented and Functional Programming with Python** Prortfolio Project.

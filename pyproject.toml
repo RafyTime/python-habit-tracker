@@ -21,10 +21,6 @@ dev = [
     "ty>=0.0.1a22",
 ]
 
-[tool.ty]
-strict = true
-exclude = ["venv", ".venv", "alembic"]
-
 [tool.ruff]
 target-version = "py314"
 exclude = [".venv", "alembic"]
