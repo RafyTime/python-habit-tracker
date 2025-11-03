@@ -1,0 +1,16 @@
+{
+  "python.testing.pytestEnabled": true,
+  "python.testing.cwd": "${workspaceFolder}/tests",
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/__init__.py": true,
+    "**/.pytest_cache": true,
+    "**/.ruff_cache": true,
+    "**/.coverage": true
+  },
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": true,
+    "strings": true
+  }
+}
