@@ -22,7 +22,7 @@ dev = [
 ]
 
 [project.scripts]
-dev = "src.main:app"
+app = "src.main:app"
 
 [build-system]
 requires = ["hatchling"]
