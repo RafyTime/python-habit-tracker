@@ -1,33 +1,72 @@
+from typing import Annotated
+
 from rich import print
 from rich.table import Table
 from typer import Argument, Exit, Option, Typer
 
 from src.core.config import app_settings
 
-app = Typer()
+app = Typer(
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+    suggest_commands=True,
+    help=f"{app_settings.PROJECT_NAME} - {app_settings.PROJECT_DESCRIPTION}",
+    epilog=f"Version: {app_settings.PROJECT_VERSION}",
+)
 
 
-@app.command()
-def run():
-    print(
-        f'✨ [cyan]Hello from {app_settings.PROJECT_NAME}! v{app_settings.PROJECT_VERSION}[/cyan] 🚀'
-    )
-
-
-@app.command()
-def hello(
-    name: str = Argument(help='The name to say hello to'),
-    formal: bool = Option(default=False, help='Whether to use formal greeting'),
+@app.callback()
+def main(
+    version: Annotated[
+        bool | None,
+        Option(
+            '--version',
+            '-v',
+            help='Display the program version',
+            is_eager=True,
+        ),
+    ] = None,
 ):
-    if formal:
-        print(f'Greetings, {name}! 🧐')
+    if version:
+        print(f'{app_settings.PROJECT_NAME} Version: {app_settings.PROJECT_VERSION}')
         raise Exit()
-    print(f'Hello {name}! 😁')
+
+@app.command()
+def truth(
+    truth: Annotated[
+        str,
+        Option(
+            prompt='Is it true?',
+            confirmation_prompt='Is it really true?',
+            help='The truth to test',
+        ),
+    ],
+):
+    """Testing the prompt & confirmation prompt & help functionality"""
+    print(f'The truth is {truth}')
+
+
+@app.command()
+def register(
+    username: Annotated[str, Argument(help='The username to register')],
+    password: Annotated[
+        str,
+        Option(
+            prompt=True,
+            confirmation_prompt=True,
+            hide_input=True,
+            help='The password to register',
+        ),
+    ],
+):
+    """Testing the hide input & help functionality"""
+    print(f'Hello {username}. Doing something very secure with password.')
+    print(f'...just kidding, here it is, very insecure: {password}')
 
 
 @app.command()
 def table():
-    # Just a command to test the table functionality
+    """Testing the table functionality"""
     table = Table(title='Test Table')
     table.add_column('Name', justify='right', style='cyan', no_wrap=True)
     table.add_column('Age', justify='right', style='magenta')
