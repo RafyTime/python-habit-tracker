@@ -20,21 +20,27 @@ app.add_typer(users_cli, name='users')
 app.add_typer(experiments_cli, name='x')
 
 
+def version_callback(value: bool) -> bool:
+    if value:
+        print(f'[bold green]v{app_settings.PROJECT_VERSION}[/bold green]')
+        raise Exit()
+    return value
+
+
 @app.callback()
 def main(
-    version: Annotated[
+    version: Annotated[  # noqa: ARG001
         bool | None,
         Option(
             '--version',
-            '-v',
+            '-V',
             help='Display the program version',
             is_eager=True,
+            callback=version_callback,
         ),
     ] = None,
 ):
-    if version:
-        print(f'{app_settings.PROJECT_NAME} Version: {app_settings.PROJECT_VERSION}')
-        raise Exit()
+    pass
 
 
 if __name__ == '__main__':
