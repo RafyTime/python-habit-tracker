@@ -1,5 +1,6 @@
 from typing import Annotated
 
+import questionary
 from rich import print
 from rich.console import Console
 from rich.panel import Panel
@@ -122,8 +123,28 @@ def switch(
     session: Session = next(get_session())
 
     if not username:
-        # Interactive selection could be implemented here, but for now just ask argument
-        username = Prompt.ask('Enter username to switch to')
+        # Interactive selection
+        profiles = session.exec(select(Profile)).all()
+        if not profiles:
+            print(
+                "[yellow]No profiles found. Create one with 'profile create'.[/yellow]"
+            )
+            raise Exit(1)
+
+        active_profile = get_active_profile(session)
+        choices = []
+        for p in profiles:
+            is_active = active_profile and active_profile.id == p.id
+            display_name = f"{p.username} (active)" if is_active else p.username
+            choices.append(questionary.Choice(title=display_name, value=p.username))
+
+        username = questionary.select(
+            'Select profile to switch to:',
+            choices=choices,
+        ).ask()
+
+        if not username:
+            raise Exit()
 
     profile = session.exec(
         select(Profile).where(Profile.username == username.lower())
@@ -139,13 +160,35 @@ def switch(
 
 @cli.command()
 def delete(
-    username: Annotated[str, Argument(help='The username to delete')],
+    username: Annotated[str, Argument(help='The username to delete')] = None,
     force: Annotated[
         bool, Option('--force', '-f', help='Force delete without confirmation')
     ] = False,
 ):
     """Delete a user profile."""
     session: Session = next(get_session())
+
+    if not username:
+        # Interactive selection
+        profiles = session.exec(select(Profile)).all()
+        if not profiles:
+            print("[yellow]No profiles found.[/yellow]")
+            raise Exit(1)
+
+        active_profile = get_active_profile(session)
+        choices = []
+        for p in profiles:
+            is_active = active_profile and active_profile.id == p.id
+            display_name = f"{p.username} (active)" if is_active else p.username
+            choices.append(questionary.Choice(title=display_name, value=p.username))
+
+        username = questionary.select(
+            'Select profile to delete:',
+            choices=choices,
+        ).ask()
+
+        if not username:
+            raise Exit()
 
     profile = session.exec(
         select(Profile).where(Profile.username == username.lower())
