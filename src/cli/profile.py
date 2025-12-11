@@ -135,7 +135,7 @@ def switch(
         choices = []
         for p in profiles:
             is_active = active_profile and active_profile.id == p.id
-            display_name = f"{p.username} (active)" if is_active else p.username
+            display_name = f'{p.username} (active)' if is_active else p.username
             choices.append(questionary.Choice(title=display_name, value=p.username))
 
         username = questionary.select(
@@ -172,14 +172,14 @@ def delete(
         # Interactive selection
         profiles = session.exec(select(Profile)).all()
         if not profiles:
-            print("[yellow]No profiles found.[/yellow]")
+            print('[yellow]No profiles found.[/yellow]')
             raise Exit(1)
 
         active_profile = get_active_profile(session)
         choices = []
         for p in profiles:
             is_active = active_profile and active_profile.id == p.id
-            display_name = f"{p.username} (active)" if is_active else p.username
+            display_name = f'{p.username} (active)' if is_active else p.username
             choices.append(questionary.Choice(title=display_name, value=p.username))
 
         username = questionary.select(
