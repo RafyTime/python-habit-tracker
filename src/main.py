@@ -5,6 +5,7 @@ from typer import Exit, Option, Typer
 
 from src.cli.experiments import cli as experiments_cli
 from src.core.config import app_settings
+from src.core.db import init_db
 
 app = Typer(
     no_args_is_help=True,
@@ -36,7 +37,7 @@ def main(
         ),
     ] = None,
 ):
-    pass
+    init_db()
 
 
 if __name__ == '__main__':
