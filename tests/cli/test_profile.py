@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from typer.testing import CliRunner
 
 from src.cli.profile import cli
-from src.core.models import ActiveSession, Profile
+from src.core.models import AppState, Profile
 
 runner = CliRunner()
 
@@ -68,10 +68,10 @@ def test_switch_profile(session: Session):
     assert result.exit_code == 0
     assert "Successfully switched to profile 'user1'" in result.stdout
 
-    # Verify active session
-    active_session = session.get(ActiveSession, 1)
-    assert active_session is not None
-    assert active_session.active_profile_id == p1.id
+    # Verify app state
+    state = session.get(AppState, 1)
+    assert state is not None
+    assert state.active_profile_id == p1.id
 
 def test_switch_profile_not_found(session: Session):
     result = runner.invoke(cli, ["switch", "nonexistent"])
@@ -98,7 +98,7 @@ def test_delete_active_profile(session: Session):
     session.commit()
 
     # Set as active
-    session.add(ActiveSession(id=1, active_profile_id=p1.id))
+    session.add(AppState(id=1, active_profile_id=p1.id))
     session.commit()
 
     result = runner.invoke(cli, ["delete", "active"], input="y\n")
@@ -106,9 +106,9 @@ def test_delete_active_profile(session: Session):
     assert "Warning: 'active' is the currently active profile" in result.stdout
     assert "Profile 'active' deleted" in result.stdout
 
-    # Verify active session cleared
-    active_session = session.get(ActiveSession, 1)
-    assert active_session.active_profile_id is None
+    # Verify app state cleared
+    state = session.get(AppState, 1)
+    assert state.active_profile_id is None
 
 def test_delete_profile_force(session: Session):
     p1 = Profile(username="force")

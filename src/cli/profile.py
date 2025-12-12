@@ -10,27 +10,27 @@ from sqlmodel import Session, select
 from typer import Argument, Exit, Option, Typer
 
 from src.core.db import get_session
-from src.core.models import ActiveSession, Profile
+from src.core.models import AppState, Profile
 
 cli = Typer()
 console = Console()
 
 
 def get_active_profile(session: Session) -> Profile | None:
-    active_session = session.get(ActiveSession, 1)
-    if active_session and active_session.active_profile_id:
-        return session.get(Profile, active_session.active_profile_id)
+    state = session.get(AppState, 1)
+    if state and state.active_profile_id:
+        return session.get(Profile, state.active_profile_id)
     return None
 
 
 def set_active_profile(session: Session, profile_id: int) -> None:
-    active_session = session.get(ActiveSession, 1)
-    if not active_session:
-        active_session = ActiveSession(id=1, active_profile_id=profile_id)
-        session.add(active_session)
+    state = session.get(AppState, 1)
+    if not state:
+        state = AppState(id=1, active_profile_id=profile_id)
+        session.add(state)
     else:
-        active_session.active_profile_id = profile_id
-        session.add(active_session)
+        state.active_profile_id = profile_id
+        session.add(state)
     session.commit()
 
 
@@ -213,12 +213,12 @@ def delete(
             print('[yellow]Operation cancelled.[/yellow]')
             return
 
-    # If deleting active profile, clear session
+    # If deleting active profile, clear state
     if is_active:
-        active_session = session.get(ActiveSession, 1)
-        if active_session:
-            active_session.active_profile_id = None
-            session.add(active_session)
+        state = session.get(AppState, 1)
+        if state:
+            state.active_profile_id = None
+            session.add(state)
 
     session.delete(profile)
     session.commit()

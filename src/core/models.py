@@ -9,6 +9,6 @@ class Profile(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
 
 
-class ActiveSession(SQLModel, table=True):
+class AppState(SQLModel, table=True):
     id: int = Field(default=1, primary_key=True)
     active_profile_id: int | None = Field(default=None, foreign_key='profile.id')
