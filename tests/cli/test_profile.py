@@ -121,3 +121,21 @@ def test_delete_profile_force(session: Session):
 
     p = session.exec(select(Profile).where(Profile.username == "force")).first()
     assert p is None
+
+def test_me_no_active_profile(session: Session):
+    result = runner.invoke(cli, ["me"])
+    assert result.exit_code == 0
+    assert "No active profile set" in result.stdout
+
+def test_me_with_active_profile(session: Session):
+    p1 = Profile(username="activeuser")
+    session.add(p1)
+    session.commit()
+
+    # Set as active
+    session.add(AppState(id=1, active_profile_id=p1.id))
+    session.commit()
+
+    result = runner.invoke(cli, ["me"])
+    assert result.exit_code == 0
+    assert "Active profile: activeuser" in result.stdout

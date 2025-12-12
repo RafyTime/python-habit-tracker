@@ -159,6 +159,20 @@ def switch(
 
 
 @cli.command()
+def me():
+    """Show the current active profile."""
+    session: Session = next(get_session())
+
+    active_profile = get_active_profile(session)
+
+    if not active_profile:
+        print("[yellow]No active profile set. Use 'profile switch' to set one.[/yellow]")
+        return
+
+    print(f"[green]Active profile:[/green] {active_profile.username}")
+
+
+@cli.command()
 def delete(
     username: Annotated[str, Argument(help='The username to delete')] = None,
     force: Annotated[
