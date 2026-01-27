@@ -6,40 +6,35 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
-from sqlmodel import Session, select
-from typer import Argument, Exit, Option, Typer
+from typer import Argument, Context, Exit, Option, Typer
 
 from src.core.db import get_session
-from src.core.models import AppState, Profile
+from src.core.profile import ProfileAlreadyExists, ProfileNotFound, ProfileService
 
 cli = Typer()
 console = Console()
 
 
-def get_active_profile(session: Session) -> Profile | None:
-    state = session.get(AppState, 1)
-    if state and state.active_profile_id:
-        return session.get(Profile, state.active_profile_id)
-    return None
+class ProfileCLIContext:
+    """Context object for profile CLI commands."""
+
+    def __init__(self) -> None:
+        self.profile_service = ProfileService(get_session)
 
 
-def set_active_profile(session: Session, profile_id: int) -> None:
-    state = session.get(AppState, 1)
-    if not state:
-        state = AppState(id=1, active_profile_id=profile_id)
-        session.add(state)
-    else:
-        state.active_profile_id = profile_id
-        session.add(state)
-    session.commit()
+@cli.callback()
+def profile_callback(ctx: Context) -> None:
+    """Initialize profile service in context."""
+    ctx.obj = ProfileCLIContext()
 
 
 @cli.command()
 def create(
+    ctx: Context,
     username: Annotated[str, Argument(help='The username to create')] = None,
 ):
     """Create a new user profile."""
-    session: Session = next(get_session())
+    service: ProfileService = ctx.obj.profile_service
 
     print(Panel.fit('Create a New Profile', style='bold blue'))
 
@@ -52,31 +47,21 @@ def create(
             username = None  # Reset so prompt asks again for username
             continue
 
-        # Check if exists username already exists
-        statement = select(Profile).where(Profile.username == username.lower())
-        existing = session.exec(statement).first()
-
-        if existing:
+        try:
+            service.create_profile(username)
+            break
+        except ProfileAlreadyExists:
             print(
                 f"[red]Profile '{username}' already exists. Please choose another.[/red]"
             )
             username = None  # Reset so prompt asks again for username
             continue
 
-        break
-
-    # Create profile
-    # Storing username as lowercase for cli consistency
-    profile = Profile(username=username.lower())
-    session.add(profile)
-    session.commit()
-    session.refresh(profile)
-
     print(f"[green]Profile '{username}' created successfully![/green]")
 
     # Prompt to switch
     if Confirm.ask(f"Do you want to switch to '{username}' now?"):
-        set_active_profile(session, profile.id)
+        service.switch_active_profile(username)
         print(f"[green]Switched to profile '{username}'.[/green]")
 
     print('\n[bold]Next Steps:[/bold]')
@@ -85,12 +70,12 @@ def create(
 
 
 @cli.command('list')
-def list_profiles():
+def list_profiles(ctx: Context):
     """List all available profiles."""
-    session: Session = next(get_session())
+    service: ProfileService = ctx.obj.profile_service
 
-    profiles = session.exec(select(Profile)).all()
-    active_profile = get_active_profile(session)
+    profiles = service.list_profiles()
+    active_profile = service.get_active_profile()
 
     if not profiles:
         print("[yellow]No profiles found. Create one with 'profile create'.[/yellow]")
@@ -117,21 +102,22 @@ def list_profiles():
 
 @cli.command()
 def switch(
+    ctx: Context,
     username: Annotated[str, Argument(help='The username to switch to')] = None,
 ):
     """Switch the active profile."""
-    session: Session = next(get_session())
+    service: ProfileService = ctx.obj.profile_service
 
     if not username:
         # Interactive selection
-        profiles = session.exec(select(Profile)).all()
+        profiles = service.list_profiles()
         if not profiles:
             print(
                 "[yellow]No profiles found. Create one with 'profile create'.[/yellow]"
             )
             raise Exit(1)
 
-        active_profile = get_active_profile(session)
+        active_profile = service.get_active_profile()
         choices = []
         for p in profiles:
             is_active = active_profile and active_profile.id == p.id
@@ -146,24 +132,20 @@ def switch(
         if not username:
             raise Exit()
 
-    profile = session.exec(
-        select(Profile).where(Profile.username == username.lower())
-    ).first()
-
-    if not profile:
+    try:
+        profile = service.switch_active_profile(username)
+        print(f"[green]Successfully switched to profile '{profile.username}'.[/green]")
+    except ProfileNotFound:
         print(f"[red]Profile '{username}' not found.[/red]")
         raise Exit(1)
 
-    set_active_profile(session, profile.id)
-    print(f"[green]Successfully switched to profile '{profile.username}'.[/green]")
-
 
 @cli.command()
-def me():
+def me(ctx: Context):
     """Show the current active profile."""
-    session: Session = next(get_session())
+    service: ProfileService = ctx.obj.profile_service
 
-    active_profile = get_active_profile(session)
+    active_profile = service.get_active_profile()
 
     if not active_profile:
         print("[yellow]No active profile set. Use 'profile switch' to set one.[/yellow]")
@@ -174,22 +156,23 @@ def me():
 
 @cli.command()
 def delete(
+    ctx: Context,
     username: Annotated[str, Argument(help='The username to delete')] = None,
     force: Annotated[
         bool, Option('--force', '-f', help='Force delete without confirmation')
     ] = False,
 ):
     """Delete a user profile."""
-    session: Session = next(get_session())
+    service: ProfileService = ctx.obj.profile_service
 
     if not username:
         # Interactive selection
-        profiles = session.exec(select(Profile)).all()
+        profiles = service.list_profiles()
         if not profiles:
             print('[yellow]No profiles found.[/yellow]')
             raise Exit(1)
 
-        active_profile = get_active_profile(session)
+        active_profile = service.get_active_profile()
         choices = []
         for p in profiles:
             is_active = active_profile and active_profile.id == p.id
@@ -204,37 +187,32 @@ def delete(
         if not username:
             raise Exit()
 
-    profile = session.exec(
-        select(Profile).where(Profile.username == username.lower())
-    ).first()
+    # Check if profile exists and if it's active (for warning)
+    try:
+        active_profile = service.get_active_profile()
+        profiles = service.list_profiles()
+        profile = next((p for p in profiles if p.username == username.lower()), None)
 
-    if not profile:
+        if not profile:
+            print(f"[red]Profile '{username}' not found.[/red]")
+            raise Exit(1)
+
+        is_active = active_profile and active_profile.id == profile.id
+
+        if is_active:
+            print(
+                f"[yellow]Warning: '{username}' is the currently active profile.[/yellow]"
+            )
+
+        if not force:
+            if not Confirm.ask(
+                f"Are you sure you want to delete profile '{username}'? All data will be lost."
+            ):
+                print('[yellow]Operation cancelled.[/yellow]')
+                return
+
+        service.delete_profile(username)
+        print(f"[green]Profile '{username}' deleted.[/green]")
+    except ProfileNotFound:
         print(f"[red]Profile '{username}' not found.[/red]")
         raise Exit(1)
-
-    active_profile = get_active_profile(session)
-    is_active = active_profile and active_profile.id == profile.id
-
-    if is_active:
-        print(
-            f"[yellow]Warning: '{username}' is the currently active profile.[/yellow]"
-        )
-
-    if not force:
-        if not Confirm.ask(
-            f"Are you sure you want to delete profile '{username}'? All data will be lost."
-        ):
-            print('[yellow]Operation cancelled.[/yellow]')
-            return
-
-    # If deleting active profile, clear state
-    if is_active:
-        state = session.get(AppState, 1)
-        if state:
-            state.active_profile_id = None
-            session.add(state)
-
-    session.delete(profile)
-    session.commit()
-
-    print(f"[green]Profile '{username}' deleted.[/green]")
