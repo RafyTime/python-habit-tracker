@@ -148,10 +148,12 @@ def me(ctx: Context):
     active_profile = service.get_active_profile()
 
     if not active_profile:
-        print("[yellow]No active profile set. Use 'profile switch' to set one.[/yellow]")
+        print(
+            "[yellow]No active profile set. Use 'profile switch' to set one.[/yellow]"
+        )
         return
 
-    print(f"[green]Active profile:[/green] {active_profile.username}")
+    print(f'[green]Active profile:[/green] {active_profile.username}')
 
 
 @cli.command()
