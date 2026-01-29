@@ -24,6 +24,7 @@ dev = [
 
 [project.scripts]
 app = "src.main:app"
+cli = "src.main:app"
 
 [build-system]
 requires = ["hatchling"]
