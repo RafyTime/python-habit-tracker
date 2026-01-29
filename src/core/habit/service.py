@@ -5,7 +5,6 @@ from datetime import datetime
 
 from sqlmodel import Session, select
 
-from src.core.models import AppState, Completion, Habit, Periodicity, Profile
 from src.core.habit.errors import (
     ActiveProfileRequired,
     HabitAlreadyCompletedForPeriod,
@@ -13,6 +12,7 @@ from src.core.habit.errors import (
     HabitArchived,
     HabitNotFound,
 )
+from src.core.models import AppState, Completion, Habit, Periodicity, Profile
 
 
 def _compute_period_key(when: datetime, periodicity: Periodicity) -> str:
@@ -53,9 +53,12 @@ class HabitService:
         """Get a database session from the factory."""
         return next(self._session_factory())
 
-    def _get_active_profile(self) -> Profile:
+    def _get_active_profile(self, session: Session) -> Profile:
         """
         Get the currently active profile.
+
+        Args:
+            session: The database session to use.
 
         Returns:
             The active Profile instance.
@@ -63,7 +66,6 @@ class HabitService:
         Raises:
             ActiveProfileRequired: If no profile is active.
         """
-        session = self._get_session()
         state = session.get(AppState, 1)
         if not state or not state.active_profile_id:
             raise ActiveProfileRequired()
@@ -90,7 +92,7 @@ class HabitService:
             HabitAlreadyExists: If a habit with the same name already exists for the active profile.
         """
         session = self._get_session()
-        profile = self._get_active_profile()
+        profile = self._get_active_profile(session)
 
         normalized_name = name.strip()
         if not normalized_name:
@@ -138,7 +140,7 @@ class HabitService:
             ActiveProfileRequired: If no profile is active.
         """
         session = self._get_session()
-        profile = self._get_active_profile()
+        profile = self._get_active_profile(session)
 
         statement = select(Habit).where(Habit.profile_id == profile.id)
 
@@ -165,7 +167,7 @@ class HabitService:
             HabitNotFound: If the habit is not found or doesn't belong to the active profile.
         """
         session = self._get_session()
-        profile = self._get_active_profile()
+        profile = self._get_active_profile(session)
 
         habit = session.get(Habit, habit_id)
         if not habit or habit.profile_id != profile.id:
@@ -198,7 +200,7 @@ class HabitService:
             HabitAlreadyCompletedForPeriod: If the habit is already completed for this period.
         """
         session = self._get_session()
-        profile = self._get_active_profile()
+        profile = self._get_active_profile(session)
 
         habit = session.get(Habit, habit_id)
         if not habit or habit.profile_id != profile.id:
@@ -248,12 +250,17 @@ class HabitService:
             ActiveProfileRequired: If no profile is active.
         """
         session = self._get_session()
+        profile = self._get_active_profile(session)
 
         if when is None:
             when = datetime.now()
 
-        # Get all active habits for the profile
-        active_habits = self.list_habits(active_only=True)
+        # Query active habits directly within the same session
+        statement = select(Habit).where(
+            Habit.profile_id == profile.id,
+            Habit.is_active == True,  # noqa: E712
+        )
+        active_habits = list(session.exec(statement.order_by(Habit.created_at)).all())
 
         due_habits = []
         for habit in active_habits:
