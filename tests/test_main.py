@@ -12,7 +12,8 @@ def test_app_exists():
 
 
 def test_app_help():
-    """Test that the help command works and shows the profile command."""
+    """Test that the help command works and shows the profile and habit commands."""
     result = runner.invoke(app, ['--help'])
     assert result.exit_code == 0
     assert 'profile' in result.stdout
+    assert 'habit' in result.stdout
