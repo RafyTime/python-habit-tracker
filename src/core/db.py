@@ -3,7 +3,7 @@ from collections.abc import Generator
 from sqlmodel import Session, SQLModel, create_engine
 
 from .config import app_settings
-from .models import AppState, Profile  # noqa: F401
+from .models import AppState, Completion, Habit, Profile  # noqa: F401
 
 engine = create_engine(app_settings.DATABASE_URL, echo=app_settings.DEBUG)
 
