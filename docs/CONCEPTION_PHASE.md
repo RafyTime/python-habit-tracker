@@ -99,4 +99,4 @@ The application follows a **modular, domain-driven architecture**—balancing si
 
 ### Entity Relationship Schema Diagram
 
-![Entity Relationship Schema Diagram](@docs/resources/entity_relationship_schema.png)
+![Entity Relationship Schema Diagram](assets/entity_relationship_schema.png)
