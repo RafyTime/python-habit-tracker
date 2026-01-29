@@ -4,6 +4,7 @@ from rich import print
 from typer import Exit, Option, Typer
 
 from src.cli.experiments import cli as experiments_cli
+from src.cli.habit import cli as habit_cli
 from src.cli.profile import cli as profile_cli
 from src.core.config import app_settings
 from src.core.db import init_db
@@ -17,6 +18,7 @@ app = Typer(
 )
 app.add_typer(experiments_cli, name='x', deprecated=True)
 app.add_typer(profile_cli, name='profile', help='Manage user profiles')
+app.add_typer(habit_cli, name='habit', help='Manage habits')
 
 
 def version_callback(value: bool) -> bool:
