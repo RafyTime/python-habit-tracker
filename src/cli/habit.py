@@ -18,6 +18,7 @@ from src.core.habit import (
     HabitService,
 )
 from src.core.models import Periodicity
+from src.core.xp import XPService
 
 cli = Typer()
 console = Console()
@@ -27,7 +28,8 @@ class HabitCLIContext:
     """Context object for habit CLI commands."""
 
     def __init__(self) -> None:
-        self.habit_service = HabitService(get_session)
+        self.xp_service = XPService(get_session)
+        self.habit_service = HabitService(get_session, xp_service=self.xp_service)
 
 
 @cli.callback()
@@ -207,6 +209,16 @@ def complete(
             print(f"[green]Habit '{habit.name}' completed for this period![/green]")
         else:
             print(f"[green]Habit {habit_id} completed for this period![/green]")
+
+        # Show XP reward
+        try:
+            xp_service: XPService = ctx.obj.xp_service
+            total_xp = xp_service.get_total_xp_for_active_profile()
+            level, xp_into_level, xp_to_next_level = xp_service.get_level_progress_for_active_profile()
+            print(f"[dim]+1 XP • Level {level} ({xp_into_level}/{xp_into_level + xp_to_next_level})[/dim]")
+        except ActiveProfileRequired:
+            # Should not happen, but handle gracefully
+            pass
 
     except ActiveProfileRequired:
         print('[red]No active profile. Use "profile switch" to set an active profile.[/red]')

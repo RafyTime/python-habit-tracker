@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Generator
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlmodel import Session, select
 
@@ -13,6 +14,9 @@ from src.core.habit.errors import (
     HabitNotFound,
 )
 from src.core.models import AppState, Completion, Habit, Periodicity, Profile
+
+if TYPE_CHECKING:
+    from src.core.xp.service import XPService
 
 
 def _compute_period_key(when: datetime, periodicity: Periodicity) -> str:
@@ -39,15 +43,21 @@ def _compute_period_key(when: datetime, periodicity: Periodicity) -> str:
 class HabitService:
     """Service for habit management operations."""
 
-    def __init__(self, session_factory: Callable[[], Generator[Session]]) -> None:
+    def __init__(
+        self,
+        session_factory: Callable[[], Generator[Session]],
+        xp_service: XPService | None = None,
+    ) -> None:
         """
         Initialize the habit service.
 
         Args:
             session_factory: A callable that returns a generator yielding a Session.
                             Compatible with the get_session() function pattern.
+            xp_service: Optional XP service for awarding XP on completions.
         """
         self._session_factory = session_factory
+        self._xp_service = xp_service
 
     def _get_session(self) -> Session:
         """Get a database session from the factory."""
@@ -233,6 +243,13 @@ class HabitService:
         session.add(completion)
         session.commit()
         session.refresh(completion)
+
+        # Award XP if service is available
+        if self._xp_service:
+            self._xp_service.award_habit_completion(
+                session, profile.id, habit_id, completion.id
+            )
+            session.commit()
 
         return completion
 
