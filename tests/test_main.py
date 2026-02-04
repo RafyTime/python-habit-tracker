@@ -17,3 +17,5 @@ def test_app_help():
     assert result.exit_code == 0
     assert 'profile' in result.stdout
     assert 'habit' in result.stdout
+    assert 'xp' in result.stdout
+    assert 'overview' in result.stdout
