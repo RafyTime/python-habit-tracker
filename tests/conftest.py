@@ -21,11 +21,15 @@ def session_fixture() -> Generator[Session]:
 @pytest.fixture(autouse=True)
 def mock_get_session(session: Session):
     """
-    Patches the get_session function in src.cli.profile and src.cli.habit to return the test session.
+    Patches the get_session function in CLI modules to return the test session.
     """
     # Use side_effect to return a new iterator each time get_session is called
     with patch("src.cli.profile.get_session", side_effect=lambda: iter([session])), patch(
         "src.cli.habit.get_session", side_effect=lambda: iter([session])
+    ), patch(
+        "src.cli.xp.get_session", side_effect=lambda: iter([session])
+    ), patch(
+        "src.cli.overview.get_session", side_effect=lambda: iter([session])
     ):
         yield
 

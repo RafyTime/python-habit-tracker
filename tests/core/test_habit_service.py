@@ -11,7 +11,8 @@ from src.core.habit import (
     HabitNotFound,
     HabitService,
 )
-from src.core.models import Completion, Habit, Periodicity, Profile
+from src.core.models import Completion, Habit, Periodicity, Profile, XPEvent
+from src.core.xp import XPService
 
 
 def test_create_habit_requires_active_profile(session: Session):
@@ -227,3 +228,26 @@ def test_get_due_habits_requires_active_profile(session: Session):
 
     with pytest.raises(ActiveProfileRequired):
         service.get_due_habits()
+
+
+def test_complete_habit_awards_xp_when_xp_service_injected(session: Session, active_profile: Profile):
+    """Test that completing a habit awards +1 XP when xp_service is injected."""
+    xp_service = XPService(lambda: iter([session]))
+    habit_service = HabitService(lambda: iter([session]), xp_service=xp_service)
+
+    habit = Habit(profile_id=active_profile.id, name="Exercise", periodicity=Periodicity.DAILY)
+    session.add(habit)
+    session.commit()
+
+    completion = habit_service.complete_habit(habit.id)
+
+    # Verify XP was awarded
+    from sqlmodel import select
+    xp_events = list(session.exec(
+        select(XPEvent).where(XPEvent.completion_id == completion.id)
+    ))
+    assert len(xp_events) == 1
+    assert xp_events[0].amount == 1
+    assert xp_events[0].reason == 'HABIT_COMPLETION'
+    assert xp_events[0].habit_id == habit.id
+    assert xp_events[0].profile_id == active_profile.id

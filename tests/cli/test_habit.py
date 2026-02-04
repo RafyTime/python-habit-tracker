@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 from typer.testing import CliRunner
 
 from src.cli.habit import cli
-from src.core.models import Completion, Habit, Periodicity, Profile
+from src.core.models import Completion, Habit, Periodicity, Profile, XPEvent
 
 runner = CliRunner()
 
@@ -85,6 +85,8 @@ def test_complete_habit_success(session: Session, active_profile: Profile):
     result = runner.invoke(cli, ["complete", str(habit.id)])
     assert result.exit_code == 0
     assert "completed for this period!" in result.stdout
+    assert "+1 XP" in result.stdout
+    assert "Level" in result.stdout
 
     # Verify completion in DB
     completion = session.exec(select(Completion).where(Completion.habit_id == habit.id)).first()
@@ -121,6 +123,25 @@ def test_complete_habit_interactive(session: Session, active_profile: Profile):
         result = runner.invoke(cli, ["complete"])
         assert result.exit_code == 0
         assert "completed for this period!" in result.stdout
+        assert "+1 XP" in result.stdout
+
+
+def test_complete_habit_awards_xp(session: Session, active_profile: Profile):
+    """Test that completing a habit awards XP and shows progress."""
+    habit = Habit(profile_id=active_profile.id, name="Exercise", periodicity=Periodicity.DAILY)
+    session.add(habit)
+    session.commit()
+
+    result = runner.invoke(cli, ["complete", str(habit.id)])
+    assert result.exit_code == 0
+
+    # Verify XP event was created
+    xp_events = list(session.exec(
+        select(XPEvent).where(XPEvent.profile_id == active_profile.id)
+    ))
+    assert len(xp_events) == 1
+    assert xp_events[0].amount == 1
+    assert xp_events[0].reason == 'HABIT_COMPLETION'
 
 
 def test_archive_habit(session: Session, active_profile: Profile):
