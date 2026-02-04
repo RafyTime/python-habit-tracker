@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlmodel import Session, select
 from typer.testing import CliRunner
@@ -93,12 +93,14 @@ def test_xp_log_limit(session: Session, active_profile: Profile):
     session.add(habit)
     session.commit()
 
-    # Create 5 completions and XP events
+    # Create 5 completions and XP events with different period keys
+    base_date = datetime.now().date()
     for i in range(5):
+        completion_date = base_date - timedelta(days=i)
         completion = Completion(
             habit_id=habit.id,
             completed_at=datetime.now(),
-            period_key=datetime.now().date().isoformat(),
+            period_key=completion_date.isoformat(),
         )
         session.add(completion)
         session.commit()
