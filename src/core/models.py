@@ -40,3 +40,13 @@ class Completion(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint('habit_id', 'period_key', name='unique_habit_period'),
     )
+
+
+class XPEvent(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    profile_id: int = Field(foreign_key='profile.id', index=True)
+    amount: int = Field(gt=0)
+    reason: str
+    awarded_at: datetime = Field(default_factory=datetime.now)
+    habit_id: int | None = Field(default=None, foreign_key='habit.id', index=True)
+    completion_id: int | None = Field(default=None, foreign_key='completion.id', unique=True)
