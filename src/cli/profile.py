@@ -31,7 +31,7 @@ def profile_callback(ctx: Context) -> None:
 @cli.command()
 def create(
     ctx: Context,
-    username: Annotated[str, Argument(help='The username to create')] = None,
+    username: Annotated[str | None, Argument(help='The username to create')] = None,
 ):
     """Create a new user profile."""
     service: ProfileService = ctx.obj.profile_service
@@ -103,7 +103,7 @@ def list_profiles(ctx: Context):
 @cli.command()
 def switch(
     ctx: Context,
-    username: Annotated[str, Argument(help='The username to switch to')] = None,
+    username: Annotated[str | None, Argument(help='The username to switch to')] = None,
 ):
     """Switch the active profile."""
     service: ProfileService = ctx.obj.profile_service
@@ -159,7 +159,7 @@ def me(ctx: Context):
 @cli.command()
 def delete(
     ctx: Context,
-    username: Annotated[str, Argument(help='The username to delete')] = None,
+    username: Annotated[str | None, Argument(help='The username to delete')] = None,
     force: Annotated[
         bool, Option('--force', '-f', help='Force delete without confirmation')
     ] = False,

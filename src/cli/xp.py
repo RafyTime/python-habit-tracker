@@ -10,6 +10,7 @@ from src.core.habit.service import HabitService
 from src.core.models import Habit
 from src.core.xp import ActiveProfileRequired, XPService
 from sqlmodel import select
+from sqlmodel.sql.expression import desc
 
 cli = Typer()
 console = Console()
@@ -63,7 +64,7 @@ def log(
         from src.core.models import XPEvent
         statement = select(XPEvent).where(
             XPEvent.profile_id == profile.id
-        ).order_by(XPEvent.awarded_at.desc()).limit(limit)
+        ).order_by(desc(XPEvent.awarded_at)).limit(limit)
         events = list(session.exec(statement))
 
         if not events:

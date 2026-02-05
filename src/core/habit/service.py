@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlmodel import Session, select
+from sqlmodel.sql.expression import col
 
 from src.core.habit.errors import (
     ActiveProfileRequired,
@@ -320,6 +321,6 @@ class HabitService:
         )
 
         if habit_ids is not None:
-            statement = statement.where(Completion.habit_id.in_(habit_ids))
+            statement = statement.where(col(Completion.habit_id).in_(habit_ids))
 
         return list(session.exec(statement.order_by(Completion.completed_at)).all())
