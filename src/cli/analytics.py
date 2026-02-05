@@ -111,8 +111,12 @@ def habits(
         console.print(table)
 
     except ActiveProfileRequired:
-        print('[yellow]No active profile set. Use "profile switch" to set one.[/yellow]')
-        print('[dim]Tip: Create a profile with "profile create" if you don\'t have one.[/dim]')
+        print(
+            '[yellow]No active profile set. Use "profile switch" to set one.[/yellow]'
+        )
+        print(
+            '[dim]Tip: Create a profile with "profile create" if you don\'t have one.[/dim]'
+        )
 
 
 @cli.command()
@@ -136,7 +140,9 @@ def longest(
                 print(f"[red]Habit '{habit}' not found.[/red]")
                 raise Exit(code=1)
             else:
-                print('[yellow]No habits found. Create one with "habit create".[/yellow]')
+                print(
+                    '[yellow]No habits found. Create one with "habit create".[/yellow]'
+                )
                 return
 
         # Fetch completions
@@ -150,7 +156,9 @@ def longest(
             target_habit_dto = None
             try:
                 habit_id = int(habit)
-                target_habit_dto = next((h for h in habits_dto if h.id == habit_id), None)
+                target_habit_dto = next(
+                    (h for h in habits_dto if h.id == habit_id), None
+                )
             except ValueError:
                 # Not a number, try name match (case-insensitive)
                 habit_name_lower = habit.lower()
@@ -167,13 +175,15 @@ def longest(
             # Show result
             if completions_dto:
                 periodicity_label = (
-                    'days' if target_habit_dto.periodicity == Periodicity.DAILY else 'weeks'
+                    'days'
+                    if target_habit_dto.periodicity == Periodicity.DAILY
+                    else 'weeks'
                 )
                 print(
                     Panel.fit(
-                        f"[bold]Longest Streak:[/bold] {streak} {periodicity_label}\n"
-                        f"[bold]Habit:[/bold] {target_habit_dto.name}\n"
-                        f"[bold]Periodicity:[/bold] {target_habit_dto.periodicity.value}",
+                        f'[bold]Longest Streak:[/bold] {streak} {periodicity_label}\n'
+                        f'[bold]Habit:[/bold] {target_habit_dto.name}\n'
+                        f'[bold]Periodicity:[/bold] {target_habit_dto.periodicity.value}',
                         title='Streak Information',
                         border_style='green',
                     )
@@ -181,9 +191,9 @@ def longest(
             else:
                 print(
                     Panel.fit(
-                        f"[bold]Longest Streak:[/bold] 0\n"
-                        f"[bold]Habit:[/bold] {target_habit_dto.name}\n"
-                        f"[dim]No completions recorded yet. Complete this habit to start building your streak![/dim]",
+                        f'[bold]Longest Streak:[/bold] 0\n'
+                        f'[bold]Habit:[/bold] {target_habit_dto.name}\n'
+                        f'[dim]No completions recorded yet. Complete this habit to start building your streak![/dim]',
                         title='Streak Information',
                         border_style='yellow',
                     )
@@ -206,17 +216,23 @@ def longest(
                     )
                 )
         else:
-            periodicity_label = 'days' if result.periodicity == Periodicity.DAILY else 'weeks'
+            periodicity_label = (
+                'days' if result.periodicity == Periodicity.DAILY else 'weeks'
+            )
             print(
                 Panel.fit(
-                    f"[bold]Longest Streak:[/bold] {result.length} {periodicity_label}\n"
-                    f"[bold]Habit:[/bold] {result.habit_name}\n"
-                    f"[bold]Periodicity:[/bold] {result.periodicity.value if result.periodicity else 'N/A'}",
+                    f'[bold]Longest Streak:[/bold] {result.length} {periodicity_label}\n'
+                    f'[bold]Habit:[/bold] {result.habit_name}\n'
+                    f'[bold]Periodicity:[/bold] {result.periodicity.value if result.periodicity else "N/A"}',
                     title='Longest Streak',
                     border_style='green',
                 )
             )
 
     except ActiveProfileRequired:
-        print('[yellow]No active profile set. Use "profile switch" to set one.[/yellow]')
-        print('[dim]Tip: Create a profile with "profile create" if you don\'t have one.[/dim]')
+        print(
+            '[yellow]No active profile set. Use "profile switch" to set one.[/yellow]'
+        )
+        print(
+            '[dim]Tip: Create a profile with "profile create" if you don\'t have one.[/dim]'
+        )

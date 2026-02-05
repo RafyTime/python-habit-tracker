@@ -60,7 +60,7 @@ def _parse_period_key_to_ordinal(period_key: str, periodicity: Periodicity) -> i
         monday = date.fromisocalendar(year, week, 1)
         return monday.toordinal()
     else:
-        raise ValueError(f"Unknown periodicity: {periodicity}")
+        raise ValueError(f'Unknown periodicity: {periodicity}')
 
 
 def _get_consecutive_step(periodicity: Periodicity) -> int:
@@ -78,7 +78,7 @@ def _get_consecutive_step(periodicity: Periodicity) -> int:
     elif periodicity == Periodicity.WEEKLY:
         return 7
     else:
-        raise ValueError(f"Unknown periodicity: {periodicity}")
+        raise ValueError(f'Unknown periodicity: {periodicity}')
 
 
 def longest_streak_for_habit(
@@ -95,9 +95,7 @@ def longest_streak_for_habit(
         Length of the longest streak (0 if no completions).
     """
     # Filter completions for this habit
-    habit_completions = [
-        c for c in completions if c.habit_id == habit.id
-    ]
+    habit_completions = [c for c in completions if c.habit_id == habit.id]
 
     if not habit_completions:
         return 0

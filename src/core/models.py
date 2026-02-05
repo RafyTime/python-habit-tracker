@@ -49,4 +49,6 @@ class XPEvent(SQLModel, table=True):
     reason: str
     awarded_at: datetime = Field(default_factory=datetime.now)
     habit_id: int | None = Field(default=None, foreign_key='habit.id', index=True)
-    completion_id: int | None = Field(default=None, foreign_key='completion.id', unique=True)
+    completion_id: int | None = Field(
+        default=None, foreign_key='completion.id', unique=True
+    )

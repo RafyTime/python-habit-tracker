@@ -79,7 +79,9 @@ def create(
         # Normalize periodicity
         periodicity_upper = periodicity.upper()
         if periodicity_upper not in ['DAILY', 'WEEKLY']:
-            print(f"[red]Invalid periodicity '{periodicity}'. Must be 'daily' or 'weekly'.[/red]")
+            print(
+                f"[red]Invalid periodicity '{periodicity}'. Must be 'daily' or 'weekly'.[/red]"
+            )
             raise Exit(1)
 
         periodicity_enum = Periodicity(periodicity_upper)
@@ -94,7 +96,9 @@ def create(
         print(' - View due habits: [cyan]habit due[/cyan]')
 
     except ActiveProfileRequired:
-        print('[red]No active profile. Use "profile switch" to set an active profile.[/red]')
+        print(
+            '[red]No active profile. Use "profile switch" to set an active profile.[/red]'
+        )
         raise Exit(1)
     except HabitAlreadyExists as e:
         print(f"[red]Habit '{e.name}' already exists for this profile.[/red]")
@@ -130,9 +134,13 @@ def list_habits(
 
         if not habits:
             if all:
-                print('[yellow]No habits found. Create one with "habit create".[/yellow]')
+                print(
+                    '[yellow]No habits found. Create one with "habit create".[/yellow]'
+                )
             else:
-                print('[yellow]No active habits found. Create one with "habit create".[/yellow]')
+                print(
+                    '[yellow]No active habits found. Create one with "habit create".[/yellow]'
+                )
             return
 
         table = Table(title='Habits')
@@ -155,14 +163,20 @@ def list_habits(
         console.print(table)
 
     except ActiveProfileRequired:
-        print('[yellow]No active profile set. Use "profile switch" to set one.[/yellow]')
-        print('[dim]Tip: Create a profile with "profile create" if you don\'t have one.[/dim]')
+        print(
+            '[yellow]No active profile set. Use "profile switch" to set one.[/yellow]'
+        )
+        print(
+            '[dim]Tip: Create a profile with "profile create" if you don\'t have one.[/dim]'
+        )
 
 
 @cli.command()
 def complete(
     ctx: Context,
-    habit_id: Annotated[int | None, Argument(help='The ID of the habit to complete')] = None,
+    habit_id: Annotated[
+        int | None, Argument(help='The ID of the habit to complete')
+    ] = None,
 ):
     """Mark a habit as completed for the current period."""
     service: HabitService = ctx.obj.habit_service
@@ -175,7 +189,9 @@ def complete(
                 # Fallback to all active habits
                 all_habits = service.list_habits(active_only=True)
                 if not all_habits:
-                    print('[yellow]No habits found. Create one with "habit create".[/yellow]')
+                    print(
+                        '[yellow]No habits found. Create one with "habit create".[/yellow]'
+                    )
                     raise Exit(1)
                 habits = all_habits
                 due_habits_set = set()
@@ -208,26 +224,32 @@ def complete(
         if habit:
             print(f"[green]Habit '{habit.name}' completed for this period![/green]")
         else:
-            print(f"[green]Habit {habit_id} completed for this period![/green]")
+            print(f'[green]Habit {habit_id} completed for this period![/green]')
 
         # Show XP reward
         try:
             xp_service: XPService = ctx.obj.xp_service
             _ = xp_service.get_total_xp_for_active_profile()
-            level, xp_into_level, xp_to_next_level = xp_service.get_level_progress_for_active_profile()
-            print(f"[dim]+1 XP • Level {level} ({xp_into_level}/{xp_into_level + xp_to_next_level})[/dim]")
+            level, xp_into_level, xp_to_next_level = (
+                xp_service.get_level_progress_for_active_profile()
+            )
+            print(
+                f'[dim]+1 XP • Level {level} ({xp_into_level}/{xp_into_level + xp_to_next_level})[/dim]'
+            )
         except ActiveProfileRequired:
             # Should not happen, but handle gracefully
             pass
 
     except ActiveProfileRequired:
-        print('[red]No active profile. Use "profile switch" to set an active profile.[/red]')
+        print(
+            '[red]No active profile. Use "profile switch" to set an active profile.[/red]'
+        )
         raise Exit(1)
     except HabitNotFound:
-        print("[red]Habit not found.[/red]")
+        print('[red]Habit not found.[/red]')
         raise Exit(1)
     except HabitArchived as e:
-        print(f"[red]Habit {e.habit_id} is archived and cannot be completed.[/red]")
+        print(f'[red]Habit {e.habit_id} is archived and cannot be completed.[/red]')
         raise Exit(1)
     except HabitAlreadyCompletedForPeriod as e:
         print(
@@ -238,7 +260,9 @@ def complete(
 @cli.command()
 def archive(
     ctx: Context,
-    habit_id: Annotated[int | None, Argument(help='The ID of the habit to archive')] = None,
+    habit_id: Annotated[
+        int | None, Argument(help='The ID of the habit to archive')
+    ] = None,
     force: Annotated[
         bool, Option('--force', '-f', help='Force archive without confirmation')
     ] = False,
@@ -271,11 +295,13 @@ def archive(
         all_habits = service.list_habits(active_only=False)
         habit = next((h for h in all_habits if h.id == habit_id), None)
         if not habit:
-            print(f"[red]Habit {habit_id} not found.[/red]")
+            print(f'[red]Habit {habit_id} not found.[/red]')
             raise Exit(1)
 
         if not force:
-            if not Confirm.ask(f"Are you sure you want to archive habit '{habit.name}'?"):
+            if not Confirm.ask(
+                f"Are you sure you want to archive habit '{habit.name}'?"
+            ):
                 print('[yellow]Operation cancelled.[/yellow]')
                 return
 
@@ -283,10 +309,12 @@ def archive(
         print(f"[green]Habit '{archived_habit.name}' archived.[/green]")
 
     except ActiveProfileRequired:
-        print('[red]No active profile. Use "profile switch" to set an active profile.[/red]')
+        print(
+            '[red]No active profile. Use "profile switch" to set an active profile.[/red]'
+        )
         raise Exit(1)
     except HabitNotFound:
-        print("[red]Habit not found.[/red]")
+        print('[red]Habit not found.[/red]')
         raise Exit(1)
 
 
@@ -299,7 +327,9 @@ def due(ctx: Context):
         due_habits = service.get_due_habits()
 
         if not due_habits:
-            print('[green]All habits are completed for this period! Great job! 🎉[/green]')
+            print(
+                '[green]All habits are completed for this period! Great job! 🎉[/green]'
+            )
             return
 
         table = Table(title='Due Habits')
@@ -320,5 +350,9 @@ def due(ctx: Context):
         print('\n[dim]Complete a habit with: [cyan]habit complete[/cyan][/dim]')
 
     except ActiveProfileRequired:
-        print('[yellow]No active profile set. Use "profile switch" to set one.[/yellow]')
-        print('[dim]Tip: Create a profile with "profile create" if you don\'t have one.[/dim]')
+        print(
+            '[yellow]No active profile set. Use "profile switch" to set one.[/yellow]'
+        )
+        print(
+            '[dim]Tip: Create a profile with "profile create" if you don\'t have one.[/dim]'
+        )

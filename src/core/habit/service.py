@@ -36,9 +36,9 @@ def _compute_period_key(when: datetime, periodicity: Periodicity) -> str:
     elif periodicity == Periodicity.WEEKLY:
         # ISO week format: YYYY-Www
         year, week, _ = when.isocalendar()
-        return f"{year}-W{week:02d}"
+        return f'{year}-W{week:02d}'
     else:
-        raise ValueError(f"Unknown periodicity: {periodicity}")
+        raise ValueError(f'Unknown periodicity: {periodicity}')
 
 
 class HabitService:
@@ -107,7 +107,7 @@ class HabitService:
 
         normalized_name = name.strip()
         if not normalized_name:
-            raise ValueError("Habit name cannot be empty")
+            raise ValueError('Habit name cannot be empty')
 
         # Check for duplicates among active habits
         statement = select(Habit).where(
@@ -191,9 +191,7 @@ class HabitService:
 
         return habit
 
-    def complete_habit(
-        self, habit_id: int, when: datetime | None = None
-    ) -> Completion:
+    def complete_habit(self, habit_id: int, when: datetime | None = None) -> Completion:
         """
         Mark a habit as completed for the current period.
 

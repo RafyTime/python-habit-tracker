@@ -11,7 +11,9 @@ class ActiveProfileRequired(HabitError):
     """Raised when an operation requires an active profile but none is set."""
 
     def __init__(self) -> None:
-        super().__init__("No active profile. Use 'profile switch' to set an active profile.")
+        super().__init__(
+            "No active profile. Use 'profile switch' to set an active profile."
+        )
 
 
 class HabitNotFound(HabitError):
@@ -19,11 +21,11 @@ class HabitNotFound(HabitError):
 
     def __init__(self, habit_id: int | None = None, name: str | None = None) -> None:
         if habit_id is not None:
-            message = f"Habit with ID {habit_id} not found"
+            message = f'Habit with ID {habit_id} not found'
         elif name is not None:
             message = f"Habit '{name}' not found"
         else:
-            message = "Habit not found"
+            message = 'Habit not found'
         super().__init__(message)
         self.habit_id = habit_id
         self.name = name
@@ -42,7 +44,7 @@ class HabitArchived(HabitError):
 
     def __init__(self, habit_id: int) -> None:
         self.habit_id = habit_id
-        super().__init__(f"Habit {habit_id} is archived and cannot be completed")
+        super().__init__(f'Habit {habit_id} is archived and cannot be completed')
 
 
 class HabitAlreadyCompletedForPeriod(HabitError):

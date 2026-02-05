@@ -11,4 +11,6 @@ class ActiveProfileRequired(XPError):
     """Raised when an operation requires an active profile but none is set."""
 
     def __init__(self) -> None:
-        super().__init__("No active profile. Use 'profile switch' to set an active profile.")
+        super().__init__(
+            "No active profile. Use 'profile switch' to set an active profile."
+        )

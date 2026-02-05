@@ -36,14 +36,20 @@ def status(ctx: Context):
 
     try:
         total_xp = service.get_total_xp_for_active_profile()
-        level, xp_into_level, xp_to_next_level = service.get_level_progress_for_active_profile()
+        level, xp_into_level, xp_to_next_level = (
+            service.get_level_progress_for_active_profile()
+        )
 
-        print(f"[bold]Total XP:[/bold] {total_xp}")
-        print(f"[bold]Level:[/bold] {level}")
-        print(f"[bold]Progress:[/bold] {xp_into_level}/10 XP to next level ({xp_to_next_level} remaining)")
+        print(f'[bold]Total XP:[/bold] {total_xp}')
+        print(f'[bold]Level:[/bold] {level}')
+        print(
+            f'[bold]Progress:[/bold] {xp_into_level}/10 XP to next level ({xp_to_next_level} remaining)'
+        )
 
     except ActiveProfileRequired:
-        print('[red]No active profile. Use "profile switch" to set an active profile.[/red]')
+        print(
+            '[red]No active profile. Use "profile switch" to set an active profile.[/red]'
+        )
         raise Exit(1)
 
 
@@ -61,9 +67,12 @@ def log(
         session = service._get_session()
         profile = service._get_active_profile(session)
 
-        statement = select(XPEvent).where(
-            XPEvent.profile_id == profile.id
-        ).order_by(desc(XPEvent.awarded_at)).limit(limit)
+        statement = (
+            select(XPEvent)
+            .where(XPEvent.profile_id == profile.id)
+            .order_by(desc(XPEvent.awarded_at))
+            .limit(limit)
+        )
         events = list(session.exec(statement))
 
         if not events:
@@ -82,7 +91,9 @@ def log(
         table.add_column('Habit', style='yellow')
 
         for event in events:
-            habit_name = habit_map.get(event.habit_id, 'N/A') if event.habit_id else 'N/A'
+            habit_name = (
+                habit_map.get(event.habit_id, 'N/A') if event.habit_id else 'N/A'
+            )
             table.add_row(
                 event.awarded_at.strftime('%Y-%m-%d %H:%M'),
                 f'+{event.amount}',
@@ -93,5 +104,7 @@ def log(
         console.print(table)
 
     except ActiveProfileRequired:
-        print('[red]No active profile. Use "profile switch" to set an active profile.[/red]')
+        print(
+            '[red]No active profile. Use "profile switch" to set an active profile.[/red]'
+        )
         raise Exit(1)
