@@ -5,9 +5,9 @@ from typer import Exit, Option, Typer
 
 from src.cli.analytics import cli as analytics_cli
 from src.cli.habit import cli as habit_cli
+from src.cli.overview import cli as overview_cli
 from src.cli.profile import cli as profile_cli
 from src.cli.xp import cli as xp_cli
-from src.cli.overview import cli as overview_cli
 from src.core.config import app_settings
 from src.core.db import init_db
 

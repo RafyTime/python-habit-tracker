@@ -76,7 +76,7 @@ def daily(ctx: Context):
         total_xp = xp_service.get_total_xp_for_active_profile()
         level, xp_into_level, xp_to_next_level = xp_service.get_level_progress_for_active_profile()
 
-        print(f"[bold]XP Summary:[/bold]")
+        print("[bold]XP Summary:[/bold]")
         print(f"  Total XP: {total_xp}")
         print(f"  Level: {level}")
         print(f"  Progress: {xp_into_level}/10 XP to next level ({xp_to_next_level} remaining)")

@@ -203,7 +203,7 @@ def complete(
         all_habits = service.list_habits(active_only=False)
         habit = next((h for h in all_habits if h.id == habit_id), None)
 
-        completion = service.complete_habit(habit_id)
+        service.complete_habit(habit_id)
 
         if habit:
             print(f"[green]Habit '{habit.name}' completed for this period![/green]")
@@ -213,7 +213,7 @@ def complete(
         # Show XP reward
         try:
             xp_service: XPService = ctx.obj.xp_service
-            total_xp = xp_service.get_total_xp_for_active_profile()
+            _ = xp_service.get_total_xp_for_active_profile()
             level, xp_into_level, xp_to_next_level = xp_service.get_level_progress_for_active_profile()
             print(f"[dim]+1 XP • Level {level} ({xp_into_level}/{xp_into_level + xp_to_next_level})[/dim]")
         except ActiveProfileRequired:

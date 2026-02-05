@@ -3,14 +3,14 @@ from typing import Annotated
 from rich import print
 from rich.console import Console
 from rich.table import Table
+from sqlmodel import select
+from sqlmodel.sql.expression import desc
 from typer import Context, Exit, Option, Typer
 
 from src.core.db import get_session
 from src.core.habit.service import HabitService
-from src.core.models import Habit
+from src.core.models import XPEvent
 from src.core.xp import ActiveProfileRequired, XPService
-from sqlmodel import select
-from sqlmodel.sql.expression import desc
 
 cli = Typer()
 console = Console()
@@ -61,7 +61,6 @@ def log(
         session = service._get_session()
         profile = service._get_active_profile(session)
 
-        from src.core.models import XPEvent
         statement = select(XPEvent).where(
             XPEvent.profile_id == profile.id
         ).order_by(desc(XPEvent.awarded_at)).limit(limit)
