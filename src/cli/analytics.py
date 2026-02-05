@@ -68,6 +68,16 @@ def habits(
     service: HabitService = ctx.obj.habit_service
 
     try:
+        periodicity_enum: Periodicity | None = None
+        if periodicity:
+            periodicity_upper = periodicity.upper()
+            if periodicity_upper not in ['DAILY', 'WEEKLY']:
+                print(
+                    f"[red]Invalid periodicity '{periodicity}'. Must be 'daily' or 'weekly'.[/red]"
+                )
+                raise Exit(code=1)
+            periodicity_enum = Periodicity(periodicity_upper)
+
         # Fetch all habits
         habits_orm = service.list_habits(active_only=False)
         habits_dto = [_habit_to_dto(h) for h in habits_orm]
@@ -77,14 +87,7 @@ def habits(
             return
 
         # Apply periodicity filter if provided
-        if periodicity:
-            periodicity_upper = periodicity.upper()
-            if periodicity_upper not in ['DAILY', 'WEEKLY']:
-                print(
-                    f"[red]Invalid periodicity '{periodicity}'. Must be 'daily' or 'weekly'.[/red]"
-                )
-                raise Exit(1)
-            periodicity_enum = Periodicity(periodicity_upper)
+        if periodicity_enum:
             habits_dto = filter_habits_by_periodicity(habits_dto, periodicity_enum)
 
         # Render table
@@ -117,7 +120,7 @@ def longest(
     ctx: Context,
     habit: Annotated[
         str | None,
-        Option('--habit', '-h', help='Habit ID or name to check streak for'),
+        Option('--habit', '-H', help='Habit ID or name to check streak for'),
     ] = None,
 ):
     """Show the longest streak across habits or for a specific habit."""
@@ -129,8 +132,12 @@ def longest(
         habits_dto = [_habit_to_dto(h) for h in habits_orm]
 
         if not habits_dto:
-            print('[yellow]No habits found. Create one with "habit create".[/yellow]')
-            return
+            if habit:
+                print(f"[red]Habit '{habit}' not found.[/red]")
+                raise Exit(code=1)
+            else:
+                print('[yellow]No habits found. Create one with "habit create".[/yellow]')
+                return
 
         # Fetch completions
         habit_ids = [h.id for h in habits_orm]
@@ -153,7 +160,7 @@ def longest(
 
             if not target_habit_dto:
                 print(f"[red]Habit '{habit}' not found.[/red]")
-                raise Exit(1)
+                raise Exit(code=1)
 
             streak = longest_streak_for_habit(target_habit_dto, completions_dto)
 
