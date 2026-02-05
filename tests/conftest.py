@@ -48,11 +48,11 @@ def active_profile_fixture(session: Session) -> Profile:
     session.add(profile)
     session.commit()
     session.refresh(profile)
-    
+
     # Now that profile.id is set, create/update AppState
     app_state = AppState(id=1, active_profile_id=profile.id)
     session.add(app_state)
     session.commit()
-    
+
     return profile
 

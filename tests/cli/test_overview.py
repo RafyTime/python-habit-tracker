@@ -1,10 +1,10 @@
 from datetime import datetime
 
-from sqlmodel import Session, select
+from sqlmodel import Session
 from typer.testing import CliRunner
 
 from src.cli.overview import cli
-from src.core.models import AppState, Completion, Habit, Periodicity, Profile, XPEvent
+from src.core.models import Completion, Habit, Periodicity, Profile, XPEvent
 
 runner = CliRunner()
 

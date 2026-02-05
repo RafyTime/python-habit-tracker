@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from sqlmodel import Session, select
+from sqlmodel import Session
 from typer.testing import CliRunner
 
 from src.cli.xp import cli

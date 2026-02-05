@@ -2,9 +2,7 @@
 
 from datetime import datetime
 
-import pytest
-
-from src.core.analytics.dto import CompletionDTO, HabitDTO, LongestStreakDTO
+from src.core.analytics.dto import CompletionDTO, HabitDTO
 from src.core.analytics.functions import (
     filter_habits_by_periodicity,
     list_all_habits,

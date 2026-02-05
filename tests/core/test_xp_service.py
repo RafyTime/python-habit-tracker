@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 from sqlmodel import Session
 
-from src.core.models import AppState, Completion, Habit, Periodicity, Profile, XPEvent
+from src.core.models import Completion, Habit, Periodicity, Profile, XPEvent
 from src.core.xp import ActiveProfileRequired, XPService
 
 
