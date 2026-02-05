@@ -294,3 +294,32 @@ class HabitService:
                 due_habits.append(habit)
 
         return due_habits
+
+    def list_completions(self, habit_ids: list[int] | None = None) -> list[Completion]:
+        """
+        List completions for the active profile, optionally filtered by habit IDs.
+
+        Args:
+            habit_ids: Optional list of habit IDs to filter by. If None, returns all
+                      completions for the active profile.
+
+        Returns:
+            A list of Completion instances for the active profile.
+
+        Raises:
+            ActiveProfileRequired: If no profile is active.
+        """
+        session = self._get_session()
+        profile = self._get_active_profile(session)
+
+        # Join Completion → Habit and filter by profile_id
+        statement = (
+            select(Completion)
+            .join(Habit, Completion.habit_id == Habit.id)
+            .where(Habit.profile_id == profile.id)
+        )
+
+        if habit_ids is not None:
+            statement = statement.where(Completion.habit_id.in_(habit_ids))
+
+        return list(session.exec(statement.order_by(Completion.completed_at)).all())
