@@ -2,14 +2,9 @@
 
 ## 1. Purpose & Scope
 
-The goal of this project is to design and implement a simple yet functional **Habit Tracking App** in Python, blending Object-Oriented and Functional Programming principles.
+The goal of this project is to design and implement a simple yet functional Habit Tracking App built in Python, combining Object-Oriented and Functional Programming principles. The app enables users to create and track daily or weekly habits, analyze their progress, and earn experience points (XP) as motivation to maintain consistency. Designed as a lightweight command-line tool, it emphasizes clean architecture, modular structure, and scalability for future extensions such as a REST API or GUI.
 
-Features and approach:
-
-- Users can create and track daily or weekly habits, analyze progress, and earn experience points (XP) as motivation to maintain consistency.
-- Designed as a lightweight command-line tool with a focus on clean architecture, modularity, and scalability (e.g., possible REST API or GUI extensions).
-- **MVP focus:** Prioritize essential features for usefulness and reliability: core tracking, analytics, and gamification.
-- Optional features—such as tracking “negative” habits or flexible habit configurations—are secondary to ensure timely delivery.
+Within this MVP, the focus is on the essential features that make the tool useful, reliable, and enjoyable to use — including core tracking, analytics, and gamification. Optional features enhance realism but are treated as secondary priorities to ensure timely delivery, such as including “negative” habits for users looking to track bad habits they try to break and extended flexibility for habit configurations.
 
 ---
 
@@ -18,27 +13,27 @@ Features and approach:
 ### Core Features
 
 - **Habit Management:**  
-  Users can create, delete, and complete positive habits (daily or weekly). Each habit records completions for streak tracking and analytics.
+  Users can create, delete, and complete positive habits (daily or weekly). Each habit records completions, supporting streak tracking and analytics.
 
 - **XP & Level System:**  
-  Completing a habit rewards +1 XP. Levels provide feedback and motivation, creating a gamified incentive loop for engagement.
+  Completing a habit rewards +1 XP, with levels providing feedback and motivation for progress. This creates a gamified incentive loop for user engagement.
 
 - **Functional Analytics:**  
-  Implemented as pure, side-effect-free functions:
-    1. List all habits
-    2. Filter habits by periodicity
-    3. Calculate the longest streak across all habits
-    4. Determine the longest streak for a specific habit  
-  These functions help users clearly evaluate consistency and progress.
+  Implemented using pure, side-effect-free functions that:
+  1. list all habits
+  2. filter habits by periodicity
+  3. calculate the longest streak across all habits
+  4. determine the longest streak for a specific habit.
+  These analytics functions help users evaluate their consistency and progress in a clear, structured way.
 
 - **Overview Command:**  
-  Summarizes current due habits, active streaks, level progress, and shows motivational messages—a daily snapshot.
+  Summarizes current due habits, active streaks, level progress, and motivational messages for a clear daily snapshot.
 
 - **Rich CLI Experience:**  
-  Uses Typer for structured CLI commands and Rich for colored tables, interactive menus, and humanized output.
+  Built with Typer for structured commands and Rich for colored tables, interactive menus, and humanized output.
 
 - **Seed Database:**  
-  Preloaded with test fixture data:  
+  Preloaded with test fixture data that includes:  
   - At least five predefined habits (minimum one daily and one weekly)  
   - Four weeks of completion records  
     This data ensures testability and meets assignment acceptance criteria.
@@ -49,16 +44,16 @@ Features and approach:
   Users can define custom intervals (e.g., every 3 days) for more flexible routines.
 
 - **Negative Habits:**  
-  For users seeking to break bad habits—records “infractions” instead of completions. Streaks represent periods without slips, addressing different behavioral goals.
+  Supports users aiming to break habits; instead of checking completions, they log infractions. Streaks represent periods without slips, promoting inclusivity for different behavioral goals.
 
 - **Milestones:**  
-  Awards XP bonuses (+5) for reaching defined streak goals; prevents duplicate claims through unique milestone tracking.
+  Awards XP bonuses (+5) for reaching defined streak goals, enhancing long-term motivation. Duplicate claims are prevented through unique milestone tracking.
 
 ---
 
 ## 3. Architecture Overview
 
-The application follows a **modular, domain-driven architecture**—balancing simplicity and scalability, and allowing for future expansions (such as REST API or GUI) without disrupting core logic.
+The application follows a **modular, domain-driven architecture**, balancing simplicity with scalability. This separation of concerns allows for potential future expansion (Like REST API or GUI) without disrupting the core logic.
 
 ### Core Technologies
 
@@ -73,6 +68,8 @@ The application follows a **modular, domain-driven architecture**—balancing si
 
 ## 4. Key Design Decisions
 
+This design fully meets the acceptance criteria for a CLI-based Python application that includes persistent data storage, functional analytics, and unit testing.
+
 - **Periodicity:**  
   Limited to DAILY and WEEKLY (calendar-aligned) with optional custom cycles.
 - **Timezone:**  
@@ -80,9 +77,9 @@ The application follows a **modular, domain-driven architecture**—balancing si
 - **Functional Analytics:**  
   Pure, side-effect-free functions handle streak analysis and summarization.
 - **Gamification:**  
-  Lightweight XP model rewards positive progress without penalties.
+  Lightweight XP model rewards progress and positive reinforcement, without penalties.
 - **Scalability:**  
-  Code is organized into separate domains (`habits`, `gamification`, `profile`, `cli`, `core`) to allow simple future expansion.
+  Code structured into independent domains (habits, gamification, profile, cli, core) to simplify later additions.
 
 ---
 
