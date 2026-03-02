@@ -8,6 +8,10 @@ from sqlmodel import Session, func, select
 from src.core.models import AppState, Profile, XPEvent
 from src.core.xp.errors import ActiveProfileRequired
 
+# Milestone streak targets (inclusive) - user gets +5 XP once per target per habit
+MILESTONE_STREAK_TARGETS: tuple[int, ...] = (3, 7, 14, 30)
+MILESTONE_BONUS_XP: int = 5
+
 
 class XPService:
     """Service for XP management operations."""
@@ -85,6 +89,57 @@ class XPService:
         session.refresh(xp_event)
 
         return xp_event
+
+    def award_milestone_xp(
+        self,
+        session: Session,
+        profile_id: int,
+        habit_id: int,
+        streak_length: int,
+    ) -> list[XPEvent]:
+        """
+        Award milestone XP for streak targets reached (idempotent per habit/target).
+
+        Args:
+            session: The database session to use.
+            profile_id: The ID of the profile receiving XP.
+            habit_id: The ID of the habit that reached the streak.
+            streak_length: Current longest streak for the habit.
+
+        Returns:
+            List of newly created XPEvent instances (empty if no new milestones).
+        """
+        newly_awarded: list[XPEvent] = []
+
+        for target in MILESTONE_STREAK_TARGETS:
+            if streak_length < target:
+                continue
+
+            reason = f'MILESTONE_STREAK_{target}'
+            existing = session.exec(
+                select(XPEvent).where(
+                    XPEvent.profile_id == profile_id,
+                    XPEvent.habit_id == habit_id,
+                    XPEvent.reason == reason,
+                )
+            ).first()
+
+            if existing:
+                continue
+
+            xp_event = XPEvent(
+                profile_id=profile_id,
+                amount=MILESTONE_BONUS_XP,
+                reason=reason,
+                habit_id=habit_id,
+                completion_id=None,
+            )
+            session.add(xp_event)
+            session.commit()
+            session.refresh(xp_event)
+            newly_awarded.append(xp_event)
+
+        return newly_awarded
 
     def get_total_xp(self, session: Session, profile_id: int) -> int:
         """

@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 from sqlmodel import Session, select
 from sqlmodel.sql.expression import col
 
+from src.core.analytics.dto import CompletionDTO, HabitDTO
+from src.core.analytics.functions import longest_streak_for_habit
 from src.core.habit.errors import (
     ActiveProfileRequired,
     HabitAlreadyCompletedForPeriod,
@@ -14,7 +16,7 @@ from src.core.habit.errors import (
     HabitArchived,
     HabitNotFound,
 )
-from src.core.models import AppState, Completion, Habit, Periodicity, Profile
+from src.core.models import AppState, Completion, Habit, Periodicity, Profile, XPEvent
 
 if TYPE_CHECKING:
     from src.core.xp.service import XPService
@@ -191,7 +193,9 @@ class HabitService:
 
         return habit
 
-    def complete_habit(self, habit_id: int, when: datetime | None = None) -> Completion:
+    def complete_habit(
+        self, habit_id: int, when: datetime | None = None
+    ) -> tuple[Completion, list[XPEvent]]:
         """
         Mark a habit as completed for the current period.
 
@@ -200,7 +204,7 @@ class HabitService:
             when: The datetime to use for completion (defaults to now).
 
         Returns:
-            The created Completion instance.
+            Tuple of (created Completion, list of newly awarded milestone XPEvents).
 
         Raises:
             ActiveProfileRequired: If no profile is active.
@@ -243,6 +247,8 @@ class HabitService:
         session.commit()
         session.refresh(completion)
 
+        milestone_events: list[XPEvent] = []
+
         # Award XP if service is available
         if self._xp_service:
             self._xp_service.award_habit_completion(
@@ -250,7 +256,31 @@ class HabitService:
             )
             session.commit()
 
-        return completion
+            # Compute streak and award milestone XP for eligible targets
+            completions = self.list_completions(habit_ids=[habit_id])
+            habit_dto = HabitDTO(
+                id=habit.id,
+                name=habit.name,
+                periodicity=habit.periodicity,
+                created_at=habit.created_at,
+                is_active=habit.is_active,
+            )
+            completion_dtos = [
+                CompletionDTO(
+                    habit_id=c.habit_id,
+                    completed_at=c.completed_at,
+                    period_key=c.period_key,
+                )
+                for c in completions
+            ]
+            streak = longest_streak_for_habit(habit_dto, completion_dtos)
+            milestone_events = self._xp_service.award_milestone_xp(
+                session, profile.id, habit_id, streak
+            )
+            if milestone_events:
+                session.commit()
+
+        return (completion, milestone_events)
 
     def get_due_habits(self, when: datetime | None = None) -> list[Habit]:
         """
