@@ -164,7 +164,7 @@ def test_complete_habit_creates_completion(session: Session, active_profile: Pro
     session.add(habit)
     session.commit()
 
-    completion = service.complete_habit(habit.id)
+    completion, _ = service.complete_habit(habit.id)
     assert completion.habit_id == habit.id
     assert completion.period_key == datetime.now().date().isoformat()
 
@@ -239,7 +239,7 @@ def test_complete_habit_awards_xp_when_xp_service_injected(session: Session, act
     session.add(habit)
     session.commit()
 
-    completion = habit_service.complete_habit(habit.id)
+    completion, _ = habit_service.complete_habit(habit.id)
 
     # Verify XP was awarded
     from sqlmodel import select
@@ -251,3 +251,46 @@ def test_complete_habit_awards_xp_when_xp_service_injected(session: Session, act
     assert xp_events[0].reason == 'HABIT_COMPLETION'
     assert xp_events[0].habit_id == habit.id
     assert xp_events[0].profile_id == active_profile.id
+
+
+def test_complete_habit_at_milestone_awards_milestone_xp(session: Session, active_profile: Profile):
+    """Test that completing a habit at milestone threshold creates both completion and milestone XP."""
+    from sqlmodel import select
+
+    xp_service = XPService(lambda: iter([session]))
+    habit_service = HabitService(lambda: iter([session]), xp_service=xp_service)
+
+    habit = Habit(profile_id=active_profile.id, name="Exercise", periodicity=Periodicity.DAILY)
+    session.add(habit)
+    session.commit()
+
+    # Create 2 prior completions (streak will be 3 after this complete)
+    base = datetime(2025, 3, 1)
+    for i in range(2):
+        d = base.replace(day=1 + i)
+        completion = Completion(
+            habit_id=habit.id,
+            completed_at=d,
+            period_key=d.date().isoformat(),
+        )
+        session.add(completion)
+    session.commit()
+
+    # Complete for day 3 - streak becomes 3, hits first milestone
+    when = base.replace(day=3)
+    completion, milestone_events = habit_service.complete_habit(habit.id, when=when)
+
+    assert completion.period_key == '2025-03-03'
+
+    # Completion XP
+    completion_xp = list(session.exec(
+        select(XPEvent).where(XPEvent.completion_id == completion.id)
+    ))
+    assert len(completion_xp) == 1
+    assert completion_xp[0].reason == 'HABIT_COMPLETION'
+    assert completion_xp[0].amount == 1
+
+    # Milestone XP
+    assert len(milestone_events) == 1
+    assert milestone_events[0].amount == 5
+    assert milestone_events[0].reason == 'MILESTONE_STREAK_3'

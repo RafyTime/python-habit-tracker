@@ -158,3 +158,56 @@ def test_get_level_progress_for_active_profile_requires_active_profile(session: 
 
     with pytest.raises(ActiveProfileRequired):
         service.get_level_progress_for_active_profile()
+
+
+def test_award_milestone_xp_when_streak_hits_target(session: Session, active_profile: Profile):
+    """Test that awarding milestone XP gives +5 when streak hits a target."""
+    service = XPService(lambda: iter([session]))
+    habit = Habit(profile_id=active_profile.id, name="Exercise", periodicity=Periodicity.DAILY)
+    session.add(habit)
+    session.commit()
+
+    events = service.award_milestone_xp(session, active_profile.id, habit.id, streak_length=3)
+
+    assert len(events) == 1
+    assert events[0].amount == 5
+    assert events[0].reason == "MILESTONE_STREAK_3"
+    assert events[0].habit_id == habit.id
+    assert events[0].profile_id == active_profile.id
+
+
+def test_award_milestone_xp_idempotent(session: Session, active_profile: Profile):
+    """Test that the same milestone is not double-awarded for the same habit."""
+    service = XPService(lambda: iter([session]))
+    habit = Habit(profile_id=active_profile.id, name="Exercise", periodicity=Periodicity.DAILY)
+    session.add(habit)
+    session.commit()
+
+    events1 = service.award_milestone_xp(session, active_profile.id, habit.id, streak_length=7)
+    events2 = service.award_milestone_xp(session, active_profile.id, habit.id, streak_length=7)
+
+    assert len(events1) == 2  # 3 and 7
+    assert len(events2) == 0  # already claimed
+
+    from sqlmodel import select
+    all_milestones = list(session.exec(
+        select(XPEvent).where(
+            XPEvent.habit_id == habit.id,
+            XPEvent.reason.startswith("MILESTONE_STREAK_"),
+        )
+    ))
+    assert len(all_milestones) == 2
+
+
+def test_award_milestone_xp_awards_next_milestone_later(session: Session, active_profile: Profile):
+    """Test that hitting a higher streak later awards only new milestones."""
+    service = XPService(lambda: iter([session]))
+    habit = Habit(profile_id=active_profile.id, name="Exercise", periodicity=Periodicity.DAILY)
+    session.add(habit)
+    session.commit()
+
+    events1 = service.award_milestone_xp(session, active_profile.id, habit.id, streak_length=3)
+    events2 = service.award_milestone_xp(session, active_profile.id, habit.id, streak_length=7)
+
+    assert len(events1) == 1  # 3
+    assert len(events2) == 1  # 7 only (3 already claimed)

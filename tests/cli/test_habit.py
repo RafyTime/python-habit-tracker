@@ -232,3 +232,38 @@ def test_due_habits_no_active_profile(session: Session):
     result = runner.invoke(cli, ["due"])
     assert result.exit_code == 0
     assert "No active profile set" in result.stdout
+
+
+def test_complete_habit_shows_milestone_message(session: Session, active_profile: Profile):
+    """Test that completing a habit at milestone threshold shows milestone message."""
+    from datetime import datetime as real_datetime
+    from unittest.mock import patch
+
+    habit = Habit(profile_id=active_profile.id, name="Exercise", periodicity=Periodicity.DAILY)
+    session.add(habit)
+    session.commit()
+
+    # Create 2 prior completions for consecutive days
+    base = real_datetime(2025, 3, 1)
+    for i in range(2):
+        d = base.replace(day=1 + i)
+        c = Completion(
+            habit_id=habit.id,
+            completed_at=d,
+            period_key=d.date().isoformat(),
+        )
+        session.add(c)
+    session.commit()
+
+    # Patch datetime so "today" is day 3 - streak becomes 3, hits first milestone
+    when = base.replace(day=3)
+    with patch("src.core.habit.service.datetime") as mock_dt:
+        mock_dt.now.return_value = when
+        mock_dt.side_effect = (
+            lambda *args, **kwargs: real_datetime(*args, **kwargs) if args or kwargs else when
+        )
+        result = runner.invoke(cli, ["complete", str(habit.id)])
+
+    assert result.exit_code == 0
+    assert "Milestone!" in result.stdout
+    assert "+5 XP bonus" in result.stdout
