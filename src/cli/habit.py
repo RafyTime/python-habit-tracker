@@ -219,7 +219,7 @@ def complete(
         all_habits = service.list_habits(active_only=False)
         habit = next((h for h in all_habits if h.id == habit_id), None)
 
-        service.complete_habit(habit_id)
+        _, milestone_events = service.complete_habit(habit_id)
 
         if habit:
             print(f"[green]Habit '{habit.name}' completed for this period![/green]")
@@ -233,9 +233,15 @@ def complete(
             level, xp_into_level, xp_to_next_level = (
                 xp_service.get_level_progress_for_active_profile()
             )
-            print(
+            base_xp_line = (
                 f'[dim]+1 XP • Level {level} ({xp_into_level}/{xp_into_level + xp_to_next_level})[/dim]'
             )
+            if milestone_events:
+                total_bonus = sum(e.amount for e in milestone_events)
+                print(base_xp_line)
+                print(f'[dim]Milestone! +{total_bonus} XP bonus[/dim]')
+            else:
+                print(base_xp_line)
         except ActiveProfileRequired:
             # Should not happen, but handle gracefully
             pass
