@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from rich import print
+from rich.console import Console
 from typer import Exit, Option, Typer
 
 from src.cli.analytics import cli as analytics_cli
@@ -23,6 +24,7 @@ app.add_typer(profile_cli, name='profile', help='Manage user profiles')
 app.add_typer(xp_cli, name='xp', help='XP and level progress')
 app.add_typer(overview_cli, name='overview', help='Daily snapshot')
 app.add_typer(analytics_cli, name='analytics', help='Analytics')
+console = Console()
 
 
 def version_callback(value: bool) -> bool:
@@ -52,8 +54,10 @@ def main(
 def seed():
     """Seed the database with test data for evaluation."""
     from src.core.db_seeder import seed_db
+
     try:
-        seed_db()
+        with console.status('Seeding database...', spinner='dots') as status:
+            seed_db(progress_callback=status.update)
         print('[bold green]Database seeded successfully![/bold green]')
     except Exception as e:
         print(f'[bold red]Error seeding database: {e}[/bold red]')
