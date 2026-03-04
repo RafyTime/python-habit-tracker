@@ -48,5 +48,17 @@ def main(
     init_db()
 
 
+@app.command()
+def seed():
+    """Seed the database with test data for evaluation."""
+    from src.core.db_seeder import seed_db
+    try:
+        seed_db()
+        print('[bold green]Database seeded successfully![/bold green]')
+    except Exception as e:
+        print(f'[bold red]Error seeding database: {e}[/bold red]')
+        raise Exit(1)
+
+
 if __name__ == '__main__':
     app()
