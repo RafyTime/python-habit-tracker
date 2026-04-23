@@ -96,4 +96,4 @@ This design fully meets the acceptance criteria for a CLI-based Python applicati
 
 ### Entity Relationship Schema Diagram
 
-![Entity Relationship Schema Diagram](assets/entity_relationship_schema.png)
+![Entity Relationship Schema Diagram](ENTITY_RELATIONSHIP_SCHEMA.png)
