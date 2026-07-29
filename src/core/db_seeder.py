@@ -6,11 +6,11 @@ from datetime import datetime, timedelta
 from sqlmodel import Session
 
 from src.core.db import engine
+from src.core.habit.errors import HabitAlreadyCompletedForPeriod, HabitAlreadyExists
 from src.core.habit.service import HabitService
-from src.core.habit.errors import HabitAlreadyExists, HabitAlreadyCompletedForPeriod
 from src.core.models import Periodicity
-from src.core.profile.service import ProfileService
 from src.core.profile.errors import ProfileAlreadyExists
+from src.core.profile.service import ProfileService
 from src.core.xp.service import XPService
 
 
@@ -32,7 +32,7 @@ def seed_db(progress_callback: Callable[[str], None] | None = None) -> None:
         profile_service = ProfileService(session_factory)
         xp_service = XPService(session_factory)
         habit_service = HabitService(session_factory, xp_service=xp_service)
-    
+
         # Get or create Primary profile
         _emit('Ensuring profiles exist...')
         try:
