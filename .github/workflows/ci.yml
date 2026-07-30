@@ -9,6 +9,10 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   quality:
     name: 🧹 Quality Gates
@@ -31,6 +35,20 @@ jobs:
 
       - name: Run quality gates
         run: uv run scripts/quality.py
+
+      - name: Publish coverage status
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          coverage="$(uv run coverage report --format=total)"
+          gh api \
+            --method POST \
+            "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            --field state=success \
+            --field context=coverage \
+            --field description="coverage: ${coverage}%" \
+            --field target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4

@@ -47,6 +47,15 @@ def test_ci_and_readme_use_the_same_quality_command() -> None:
     assert QUALITY_COMMAND in _read_project_file('README.md')
 
 
+def test_ci_publishes_coverage_for_the_readme_badge() -> None:
+    ci_workflow = _read_project_file('.github/workflows/ci.yml')
+
+    assert 'statuses: write' in ci_workflow
+    assert 'coverage report --format=total' in ci_workflow
+    assert '--field context=coverage' in ci_workflow
+    assert '--field description="coverage: ${coverage}%"' in ci_workflow
+
+
 def test_unused_fixture_arguments_are_ignored_only_in_tests() -> None:
     with (PROJECT_ROOT / 'pyproject.toml').open('rb') as pyproject_file:
         pyproject = tomllib.load(pyproject_file)
