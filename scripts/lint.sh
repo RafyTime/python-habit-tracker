@@ -3,6 +3,4 @@
 set -e
 set -x
 
-ty check src
-ruff check src
-ruff format src --check
+python scripts/quality.py lint

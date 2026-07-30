@@ -20,18 +20,18 @@ def test_create_habit_requires_active_profile(session: Session):
     service = HabitService(lambda: iter([session]))
 
     with pytest.raises(ActiveProfileRequired):
-        service.create_habit("Test Habit", Periodicity.DAILY)
+        service.create_habit('Test Habit', Periodicity.DAILY)
 
 
 def test_create_habit_rejects_empty_name(session: Session, active_profile: Profile):
     """Test that creating a habit with empty name raises ValueError."""
     service = HabitService(lambda: iter([session]))
 
-    with pytest.raises(ValueError, match="cannot be empty"):
-        service.create_habit("", Periodicity.DAILY)
+    with pytest.raises(ValueError, match='cannot be empty'):
+        service.create_habit('', Periodicity.DAILY)
 
-    with pytest.raises(ValueError, match="cannot be empty"):
-        service.create_habit("   ", Periodicity.DAILY)
+    with pytest.raises(ValueError, match='cannot be empty'):
+        service.create_habit('   ', Periodicity.DAILY)
 
 
 def test_create_habit_rejects_duplicates(session: Session, active_profile: Profile):
@@ -39,24 +39,24 @@ def test_create_habit_rejects_duplicates(session: Session, active_profile: Profi
     service = HabitService(lambda: iter([session]))
 
     # Create first habit
-    habit1 = service.create_habit("Exercise", Periodicity.DAILY)
-    assert habit1.name == "Exercise"
+    habit1 = service.create_habit('Exercise', Periodicity.DAILY)
+    assert habit1.name == 'Exercise'
 
     # Try to create duplicate
     with pytest.raises(HabitAlreadyExists):
-        service.create_habit("Exercise", Periodicity.DAILY)
+        service.create_habit('Exercise', Periodicity.DAILY)
 
     # Different periodicity should still be duplicate (same name)
     with pytest.raises(HabitAlreadyExists):
-        service.create_habit("Exercise", Periodicity.WEEKLY)
+        service.create_habit('Exercise', Periodicity.WEEKLY)
 
 
 def test_create_habit_success(session: Session, active_profile: Profile):
     """Test successful habit creation."""
     service = HabitService(lambda: iter([session]))
 
-    habit = service.create_habit("Read Books", Periodicity.DAILY)
-    assert habit.name == "Read Books"
+    habit = service.create_habit('Read Books', Periodicity.DAILY)
+    assert habit.name == 'Read Books'
     assert habit.periodicity == Periodicity.DAILY
     assert habit.profile_id == active_profile.id
     assert habit.is_active is True
@@ -64,23 +64,31 @@ def test_create_habit_success(session: Session, active_profile: Profile):
     # Verify in DB
     db_habit = session.get(Habit, habit.id)
     assert db_habit is not None
-    assert db_habit.name == "Read Books"
+    assert db_habit.name == 'Read Books'
 
 
-def test_list_habits_scoped_to_active_profile(session: Session, active_profile: Profile):
+def test_list_habits_scoped_to_active_profile(
+    session: Session, active_profile: Profile
+):
     """Test that listing habits only returns habits for the active profile."""
     profile1 = active_profile
-    profile2 = Profile(username="user2")
+    profile2 = Profile(username='user2')
     session.add(profile2)
     session.commit()
 
     service = HabitService(lambda: iter([session]))
 
     # Create habits for profile1
-    habit1 = Habit(profile_id=profile1.id, name="Habit 1", periodicity=Periodicity.DAILY)
-    habit2 = Habit(profile_id=profile1.id, name="Habit 2", periodicity=Periodicity.WEEKLY)
+    habit1 = Habit(
+        profile_id=profile1.id, name='Habit 1', periodicity=Periodicity.DAILY
+    )
+    habit2 = Habit(
+        profile_id=profile1.id, name='Habit 2', periodicity=Periodicity.WEEKLY
+    )
     # Create habit for profile2
-    habit3 = Habit(profile_id=profile2.id, name="Habit 3", periodicity=Periodicity.DAILY)
+    habit3 = Habit(
+        profile_id=profile2.id, name='Habit 3', periodicity=Periodicity.DAILY
+    )
     session.add_all([habit1, habit2, habit3])
     session.commit()
 
@@ -95,15 +103,25 @@ def test_list_habits_active_only(session: Session, active_profile: Profile):
     """Test that list_habits filters by active status."""
     service = HabitService(lambda: iter([session]))
 
-    habit1 = Habit(profile_id=active_profile.id, name="Active", periodicity=Periodicity.DAILY, is_active=True)
-    habit2 = Habit(profile_id=active_profile.id, name="Archived", periodicity=Periodicity.DAILY, is_active=False)
+    habit1 = Habit(
+        profile_id=active_profile.id,
+        name='Active',
+        periodicity=Periodicity.DAILY,
+        is_active=True,
+    )
+    habit2 = Habit(
+        profile_id=active_profile.id,
+        name='Archived',
+        periodicity=Periodicity.DAILY,
+        is_active=False,
+    )
     session.add_all([habit1, habit2])
     session.commit()
 
     # Default should only show active
     habits = service.list_habits()
     assert len(habits) == 1
-    assert habits[0].name == "Active"
+    assert habits[0].name == 'Active'
 
     # Explicitly request active only
     habits = service.list_habits(active_only=True)
@@ -118,25 +136,34 @@ def test_list_habits_filter_by_periodicity(session: Session, active_profile: Pro
     """Test filtering habits by periodicity."""
     service = HabitService(lambda: iter([session]))
 
-    habit1 = Habit(profile_id=active_profile.id, name="Daily", periodicity=Periodicity.DAILY)
-    habit2 = Habit(profile_id=active_profile.id, name="Weekly", periodicity=Periodicity.WEEKLY)
+    habit1 = Habit(
+        profile_id=active_profile.id, name='Daily', periodicity=Periodicity.DAILY
+    )
+    habit2 = Habit(
+        profile_id=active_profile.id, name='Weekly', periodicity=Periodicity.WEEKLY
+    )
     session.add_all([habit1, habit2])
     session.commit()
 
     daily_habits = service.list_habits(periodicity=Periodicity.DAILY)
     assert len(daily_habits) == 1
-    assert daily_habits[0].name == "Daily"
+    assert daily_habits[0].name == 'Daily'
 
     weekly_habits = service.list_habits(periodicity=Periodicity.WEEKLY)
     assert len(weekly_habits) == 1
-    assert weekly_habits[0].name == "Weekly"
+    assert weekly_habits[0].name == 'Weekly'
 
 
 def test_archive_habit(session: Session, active_profile: Profile):
     """Test archiving a habit."""
     service = HabitService(lambda: iter([session]))
 
-    habit = Habit(profile_id=active_profile.id, name="To Archive", periodicity=Periodicity.DAILY, is_active=True)
+    habit = Habit(
+        profile_id=active_profile.id,
+        name='To Archive',
+        periodicity=Periodicity.DAILY,
+        is_active=True,
+    )
     session.add(habit)
     session.commit()
 
@@ -160,7 +187,9 @@ def test_complete_habit_creates_completion(session: Session, active_profile: Pro
     """Test that completing a habit creates a completion record."""
     service = HabitService(lambda: iter([session]))
 
-    habit = Habit(profile_id=active_profile.id, name="Exercise", periodicity=Periodicity.DAILY)
+    habit = Habit(
+        profile_id=active_profile.id, name='Exercise', periodicity=Periodicity.DAILY
+    )
     session.add(habit)
     session.commit()
 
@@ -173,11 +202,15 @@ def test_complete_habit_creates_completion(session: Session, active_profile: Pro
     assert db_completion is not None
 
 
-def test_complete_habit_twice_same_period_raises_error(session: Session, active_profile: Profile):
+def test_complete_habit_twice_same_period_raises_error(
+    session: Session, active_profile: Profile
+):
     """Test that completing a habit twice in the same period raises error."""
     service = HabitService(lambda: iter([session]))
 
-    habit = Habit(profile_id=active_profile.id, name="Exercise", periodicity=Periodicity.DAILY)
+    habit = Habit(
+        profile_id=active_profile.id, name='Exercise', periodicity=Periodicity.DAILY
+    )
     session.add(habit)
     session.commit()
 
@@ -189,11 +222,18 @@ def test_complete_habit_twice_same_period_raises_error(session: Session, active_
         service.complete_habit(habit.id)
 
 
-def test_complete_archived_habit_raises_error(session: Session, active_profile: Profile):
+def test_complete_archived_habit_raises_error(
+    session: Session, active_profile: Profile
+):
     """Test that completing an archived habit raises HabitArchived."""
     service = HabitService(lambda: iter([session]))
 
-    habit = Habit(profile_id=active_profile.id, name="Archived", periodicity=Periodicity.DAILY, is_active=False)
+    habit = Habit(
+        profile_id=active_profile.id,
+        name='Archived',
+        periodicity=Periodicity.DAILY,
+        is_active=False,
+    )
     session.add(habit)
     session.commit()
 
@@ -205,15 +245,21 @@ def test_get_due_habits(session: Session, active_profile: Profile):
     """Test getting habits that are due (not completed for current period)."""
     service = HabitService(lambda: iter([session]))
 
-    habit1 = Habit(profile_id=active_profile.id, name="Due", periodicity=Periodicity.DAILY)
-    habit2 = Habit(profile_id=active_profile.id, name="Completed", periodicity=Periodicity.DAILY)
+    habit1 = Habit(
+        profile_id=active_profile.id, name='Due', periodicity=Periodicity.DAILY
+    )
+    habit2 = Habit(
+        profile_id=active_profile.id, name='Completed', periodicity=Periodicity.DAILY
+    )
     session.add_all([habit1, habit2])
     session.commit()
 
     # Complete habit2
     today = datetime.now()
     period_key = today.date().isoformat()
-    completion = Completion(habit_id=habit2.id, completed_at=today, period_key=period_key)
+    completion = Completion(
+        habit_id=habit2.id, completed_at=today, period_key=period_key
+    )
     session.add(completion)
     session.commit()
 
@@ -230,12 +276,16 @@ def test_get_due_habits_requires_active_profile(session: Session):
         service.get_due_habits()
 
 
-def test_complete_habit_awards_xp_when_xp_service_injected(session: Session, active_profile: Profile):
+def test_complete_habit_awards_xp_when_xp_service_injected(
+    session: Session, active_profile: Profile
+):
     """Test that completing a habit awards +1 XP when xp_service is injected."""
     xp_service = XPService(lambda: iter([session]))
     habit_service = HabitService(lambda: iter([session]), xp_service=xp_service)
 
-    habit = Habit(profile_id=active_profile.id, name="Exercise", periodicity=Periodicity.DAILY)
+    habit = Habit(
+        profile_id=active_profile.id, name='Exercise', periodicity=Periodicity.DAILY
+    )
     session.add(habit)
     session.commit()
 
@@ -243,9 +293,10 @@ def test_complete_habit_awards_xp_when_xp_service_injected(session: Session, act
 
     # Verify XP was awarded
     from sqlmodel import select
-    xp_events = list(session.exec(
-        select(XPEvent).where(XPEvent.completion_id == completion.id)
-    ))
+
+    xp_events = list(
+        session.exec(select(XPEvent).where(XPEvent.completion_id == completion.id))
+    )
     assert len(xp_events) == 1
     assert xp_events[0].amount == 1
     assert xp_events[0].reason == 'HABIT_COMPLETION'
@@ -253,14 +304,18 @@ def test_complete_habit_awards_xp_when_xp_service_injected(session: Session, act
     assert xp_events[0].profile_id == active_profile.id
 
 
-def test_complete_habit_at_milestone_awards_milestone_xp(session: Session, active_profile: Profile):
+def test_complete_habit_at_milestone_awards_milestone_xp(
+    session: Session, active_profile: Profile
+):
     """Test that completing a habit at milestone threshold creates both completion and milestone XP."""
     from sqlmodel import select
 
     xp_service = XPService(lambda: iter([session]))
     habit_service = HabitService(lambda: iter([session]), xp_service=xp_service)
 
-    habit = Habit(profile_id=active_profile.id, name="Exercise", periodicity=Periodicity.DAILY)
+    habit = Habit(
+        profile_id=active_profile.id, name='Exercise', periodicity=Periodicity.DAILY
+    )
     session.add(habit)
     session.commit()
 
@@ -283,9 +338,9 @@ def test_complete_habit_at_milestone_awards_milestone_xp(session: Session, activ
     assert completion.period_key == '2025-03-03'
 
     # Completion XP
-    completion_xp = list(session.exec(
-        select(XPEvent).where(XPEvent.completion_id == completion.id)
-    ))
+    completion_xp = list(
+        session.exec(select(XPEvent).where(XPEvent.completion_id == completion.id))
+    )
     assert len(completion_xp) == 1
     assert completion_xp[0].reason == 'HABIT_COMPLETION'
     assert completion_xp[0].amount == 1

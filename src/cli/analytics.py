@@ -17,7 +17,7 @@ from src.core.analytics import (
 )
 from src.core.db import get_session
 from src.core.habit import ActiveProfileRequired, HabitService
-from src.core.models import Periodicity
+from src.core.models import Completion, Habit, Periodicity, require_persisted_id
 
 cli = Typer()
 console = Console()
@@ -36,10 +36,10 @@ def analytics_callback(ctx: Context) -> None:
     ctx.obj = AnalyticsCLIContext()
 
 
-def _habit_to_dto(habit) -> HabitDTO:
+def _habit_to_dto(habit: Habit) -> HabitDTO:
     """Convert Habit ORM model to HabitDTO."""
     return HabitDTO(
-        id=habit.id,
+        id=require_persisted_id(habit.id, 'Habit'),
         name=habit.name,
         periodicity=habit.periodicity,
         created_at=habit.created_at,
@@ -47,7 +47,7 @@ def _habit_to_dto(habit) -> HabitDTO:
     )
 
 
-def _completion_to_dto(completion) -> CompletionDTO:
+def _completion_to_dto(completion: Completion) -> CompletionDTO:
     """Convert Completion ORM model to CompletionDTO."""
     return CompletionDTO(
         habit_id=completion.habit_id,
@@ -146,7 +146,7 @@ def longest(
                 return
 
         # Fetch completions
-        habit_ids = [h.id for h in habits_orm]
+        habit_ids = [habit.id for habit in habits_dto]
         completions_orm = service.list_completions(habit_ids=habit_ids)
         completions_dto = [_completion_to_dto(c) for c in completions_orm]
 

@@ -36,7 +36,7 @@ def version_callback(value: bool) -> bool:
 
 @app.callback()
 def main(
-    version: Annotated[  # noqa: ARG001
+    version: Annotated[
         bool | None,
         Option(
             '--version',
@@ -47,6 +47,7 @@ def main(
         ),
     ] = None,
 ):
+    _ = version
     init_db()
 
 

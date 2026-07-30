@@ -10,12 +10,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint:
-    name: 🧹 Lint & Checks
+  quality:
+    name: 🧹 Quality Gates
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout 
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -29,30 +29,8 @@ jobs:
           version: "0.9.7"
           enable-cache: true
 
-      - name: Run lints & checks
-        run: uv run bash scripts/lint.sh
-    
-  test:
-    name: 🧪 Test & Coverage
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout 
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.14'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          version: "0.9.7"
-          enable-cache: true
-
-      - name: Run tests 
-        run: uv run bash scripts/test.sh "Coverage for ${{ github.sha }}"
+      - name: Run quality gates
+        run: uv run scripts/quality.py
 
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4
@@ -60,4 +38,3 @@ jobs:
           name: coverage-html
           path: htmlcov
           include-hidden-files: true
-

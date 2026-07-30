@@ -1,6 +1,6 @@
 """Profile service for managing user profiles and active profile state."""
 
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Iterator
 
 from sqlmodel import Session, select
 
@@ -11,7 +11,7 @@ from src.core.profile.errors import ProfileAlreadyExists, ProfileNotFound
 class ProfileService:
     """Service for profile management operations."""
 
-    def __init__(self, session_factory: Callable[[], Generator[Session]]) -> None:
+    def __init__(self, session_factory: Callable[[], Iterator[Session]]) -> None:
         """
         Initialize the profile service.
 

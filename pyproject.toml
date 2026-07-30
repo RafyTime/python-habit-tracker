@@ -55,6 +55,7 @@ ignore = [
     "W191",  # indentation contains tabs
     "B904",  # Allow raising exceptions without from e, for HTTPException
 ]
+per-file-ignores = { "tests/**/*.py" = ["ARG001"] }
 
 [tool.ruff.lint.pyupgrade]
 keep-runtime-typing = true

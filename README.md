@@ -60,3 +60,12 @@ All XP and milestone data is synchronized with the completion records, ensuring 
 ```bash
 uv run pytest
 ```
+
+## Quality gates
+
+Run the same formatting, linting, source type checking, tests, and coverage
+generation used by CI:
+
+```bash
+uv run scripts/quality.py
+```

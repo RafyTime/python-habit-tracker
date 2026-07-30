@@ -1,14 +1,21 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from sqlmodel import Field, SQLModel, UniqueConstraint
 
 
-class Periodicity(str, Enum):
+class Periodicity(StrEnum):
     """Habit periodicity types."""
 
     DAILY = 'DAILY'
     WEEKLY = 'WEEKLY'
+
+
+def require_persisted_id(record_id: int | None, record_name: str) -> int:
+    """Return an ORM record ID or fail clearly if the record is not persisted."""
+    if record_id is None:
+        raise RuntimeError(f'{record_name} has not been persisted')
+    return record_id
 
 
 class Profile(SQLModel, table=True):

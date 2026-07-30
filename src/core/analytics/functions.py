@@ -108,7 +108,7 @@ def longest_streak_for_habit(
                 completion.period_key, habit.periodicity
             )
             period_ordinals.add(ordinal)
-        except (ValueError, KeyError):
+        except ValueError, KeyError:
             # Skip invalid period keys
             continue
 

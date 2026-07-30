@@ -233,9 +233,7 @@ def complete(
             level, xp_into_level, xp_to_next_level = (
                 xp_service.get_level_progress_for_active_profile()
             )
-            base_xp_line = (
-                f'[dim]+1 XP • Level {level} ({xp_into_level}/{xp_into_level + xp_to_next_level})[/dim]'
-            )
+            base_xp_line = f'[dim]+1 XP • Level {level} ({xp_into_level}/{xp_into_level + xp_to_next_level})[/dim]'
             if milestone_events:
                 total_bonus = sum(e.amount for e in milestone_events)
                 print(base_xp_line)

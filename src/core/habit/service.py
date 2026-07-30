@@ -1,6 +1,6 @@
 """Habit service for managing habits and completions."""
 
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Iterator
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -16,7 +16,15 @@ from src.core.habit.errors import (
     HabitArchived,
     HabitNotFound,
 )
-from src.core.models import AppState, Completion, Habit, Periodicity, Profile, XPEvent
+from src.core.models import (
+    AppState,
+    Completion,
+    Habit,
+    Periodicity,
+    Profile,
+    XPEvent,
+    require_persisted_id,
+)
 
 if TYPE_CHECKING:
     from src.core.xp.service import XPService
@@ -48,7 +56,7 @@ class HabitService:
 
     def __init__(
         self,
-        session_factory: Callable[[], Generator[Session]],
+        session_factory: Callable[[], Iterator[Session]],
         xp_service: XPService | None = None,
     ) -> None:
         """
@@ -106,6 +114,7 @@ class HabitService:
         """
         session = self._get_session()
         profile = self._get_active_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Active profile')
 
         normalized_name = name.strip()
         if not normalized_name:
@@ -113,9 +122,9 @@ class HabitService:
 
         # Check for duplicates among active habits
         statement = select(Habit).where(
-            Habit.profile_id == profile.id,
+            Habit.profile_id == profile_id,
             Habit.name == normalized_name,
-            Habit.is_active == True,  # noqa: E712
+            col(Habit.is_active),
         )
         existing = session.exec(statement).first()
 
@@ -124,7 +133,7 @@ class HabitService:
 
         # Create habit
         habit = Habit(
-            profile_id=profile.id,
+            profile_id=profile_id,
             name=normalized_name,
             periodicity=periodicity,
         )
@@ -158,12 +167,12 @@ class HabitService:
         statement = select(Habit).where(Habit.profile_id == profile.id)
 
         if active_only:
-            statement = statement.where(Habit.is_active == True)  # noqa: E712
+            statement = statement.where(col(Habit.is_active))
 
         if periodicity:
             statement = statement.where(Habit.periodicity == periodicity)
 
-        return list(session.exec(statement.order_by(Habit.created_at)).all())
+        return list(session.exec(statement.order_by(col(Habit.created_at))).all())
 
     def archive_habit(self, habit_id: int) -> Habit:
         """
@@ -181,9 +190,10 @@ class HabitService:
         """
         session = self._get_session()
         profile = self._get_active_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Active profile')
 
         habit = session.get(Habit, habit_id)
-        if not habit or habit.profile_id != profile.id:
+        if not habit or habit.profile_id != profile_id:
             raise HabitNotFound(habit_id=habit_id)
 
         habit.is_active = False
@@ -214,9 +224,10 @@ class HabitService:
         """
         session = self._get_session()
         profile = self._get_active_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Active profile')
 
         habit = session.get(Habit, habit_id)
-        if not habit or habit.profile_id != profile.id:
+        if not habit or habit.profile_id != profile_id:
             raise HabitNotFound(habit_id=habit_id)
 
         if not habit.is_active:
@@ -246,20 +257,21 @@ class HabitService:
         session.add(completion)
         session.commit()
         session.refresh(completion)
+        completion_id = require_persisted_id(completion.id, 'Completion')
 
         milestone_events: list[XPEvent] = []
 
         # Award XP if service is available
         if self._xp_service:
             self._xp_service.award_habit_completion(
-                session, profile.id, habit_id, completion.id
+                session, profile_id, habit_id, completion_id
             )
             session.commit()
 
             # Compute streak and award milestone XP for eligible targets
             completions = self.list_completions(habit_ids=[habit_id])
             habit_dto = HabitDTO(
-                id=habit.id,
+                id=habit_id,
                 name=habit.name,
                 periodicity=habit.periodicity,
                 created_at=habit.created_at,
@@ -275,7 +287,7 @@ class HabitService:
             ]
             streak = longest_streak_for_habit(habit_dto, completion_dtos)
             milestone_events = self._xp_service.award_milestone_xp(
-                session, profile.id, habit_id, streak
+                session, profile_id, habit_id, streak
             )
             if milestone_events:
                 session.commit()
@@ -304,9 +316,11 @@ class HabitService:
         # Query active habits directly within the same session
         statement = select(Habit).where(
             Habit.profile_id == profile.id,
-            Habit.is_active == True,  # noqa: E712
+            col(Habit.is_active),
         )
-        active_habits = list(session.exec(statement.order_by(Habit.created_at)).all())
+        active_habits = list(
+            session.exec(statement.order_by(col(Habit.created_at))).all()
+        )
 
         due_habits = []
         for habit in active_habits:
@@ -344,11 +358,13 @@ class HabitService:
         # Join Completion → Habit and filter by profile_id
         statement = (
             select(Completion)
-            .join(Habit, Completion.habit_id == Habit.id)
+            .join(Habit, col(Completion.habit_id) == col(Habit.id))
             .where(Habit.profile_id == profile.id)
         )
 
         if habit_ids is not None:
             statement = statement.where(col(Completion.habit_id).in_(habit_ids))
 
-        return list(session.exec(statement.order_by(Completion.completed_at)).all())
+        return list(
+            session.exec(statement.order_by(col(Completion.completed_at))).all()
+        )

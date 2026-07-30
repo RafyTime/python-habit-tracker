@@ -76,7 +76,9 @@ def test_analytics_habits_periodicity_filter(session: Session, active_profile: P
     assert 'Weekly Habit' not in result.stdout
 
 
-def test_analytics_habits_invalid_periodicity(session: Session, active_profile: Profile):
+def test_analytics_habits_invalid_periodicity(
+    session: Session, active_profile: Profile
+):
     """Test analytics habits with invalid periodicity shows error."""
     result = runner.invoke(cli, ['habits', '--periodicity', 'invalid'])
     assert result.exit_code == 1
@@ -104,7 +106,10 @@ def test_analytics_longest_no_completions(session: Session, active_profile: Prof
 
     result = runner.invoke(cli, ['longest'])
     assert result.exit_code == 0
-    assert 'Longest Streak: 0' in result.stdout or 'No completions recorded' in result.stdout
+    assert (
+        'Longest Streak: 0' in result.stdout
+        or 'No completions recorded' in result.stdout
+    )
 
 
 def test_analytics_longest_shows_best_habit(session: Session, active_profile: Profile):
@@ -155,13 +160,15 @@ def test_analytics_longest_shows_best_habit(session: Session, active_profile: Pr
         period_key='2025-01-03',
     )
 
-    session.add_all([
-        completion1_1,
-        completion1_2,
-        completion2_1,
-        completion2_2,
-        completion2_3,
-    ])
+    session.add_all(
+        [
+            completion1_1,
+            completion1_2,
+            completion2_1,
+            completion2_2,
+            completion2_3,
+        ]
+    )
     session.commit()
 
     result = runner.invoke(cli, ['longest'])
@@ -271,5 +278,8 @@ def test_analytics_longest_with_no_completions_shows_message(
 
     result = runner.invoke(cli, ['longest', '--habit', str(habit.id)])
     assert result.exit_code == 0
-    assert 'Longest Streak: 0' in result.stdout or 'No completions recorded' in result.stdout
+    assert (
+        'Longest Streak: 0' in result.stdout
+        or 'No completions recorded' in result.stdout
+    )
     assert 'Exercise' in result.stdout

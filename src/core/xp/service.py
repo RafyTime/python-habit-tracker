@@ -1,11 +1,11 @@
 """XP service for managing experience points and levels."""
 
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Iterator
 from math import floor
 
 from sqlmodel import Session, func, select
 
-from src.core.models import AppState, Profile, XPEvent
+from src.core.models import AppState, Profile, XPEvent, require_persisted_id
 from src.core.xp.errors import ActiveProfileRequired
 
 # Milestone streak targets (inclusive) - user gets +5 XP once per target per habit
@@ -16,7 +16,7 @@ MILESTONE_BONUS_XP: int = 5
 class XPService:
     """Service for XP management operations."""
 
-    def __init__(self, session_factory: Callable[[], Generator[Session]]) -> None:
+    def __init__(self, session_factory: Callable[[], Iterator[Session]]) -> None:
         """
         Initialize the XP service.
 
@@ -200,7 +200,8 @@ class XPService:
         """
         session = self._get_session()
         profile = self._get_active_profile(session)
-        return self.get_total_xp(session, profile.id)
+        profile_id = require_persisted_id(profile.id, 'Active profile')
+        return self.get_total_xp(session, profile_id)
 
     def get_level_progress_for_active_profile(self) -> tuple[int, int, int]:
         """
@@ -214,5 +215,6 @@ class XPService:
         """
         session = self._get_session()
         profile = self._get_active_profile(session)
-        total_xp = self.get_total_xp(session, profile.id)
+        profile_id = require_persisted_id(profile.id, 'Active profile')
+        total_xp = self.get_total_xp(session, profile_id)
         return self.compute_level_progress(total_xp)
