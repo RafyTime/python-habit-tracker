@@ -9,12 +9,17 @@ from src.core.models import Completion, Habit, Periodicity, Profile, XPEvent
 runner = CliRunner()
 
 
-def test_overview_no_active_profile(session: Session):
-    """Test that overview with no active profile shows friendly guidance."""
+def test_overview_on_fresh_database(session: Session):
+    """Fresh install can show overview without profile create/switch guidance."""
+    from src.core.profile import ProfileService
+
+    ProfileService(lambda: iter([session])).ensure_single_profile()
+
     result = runner.invoke(cli, ['daily'])
     assert result.exit_code == 0
-    assert 'No active profile set' in result.stdout
-    assert 'profile switch' in result.stdout
+    assert 'Daily Overview' in result.stdout
+    assert 'profile switch' not in result.stdout
+    assert 'profile create' not in result.stdout
 
 
 def test_overview_shows_due_habits_and_xp(session: Session, active_profile: Profile):

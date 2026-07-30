@@ -10,7 +10,6 @@ from typer import Argument, Context, Exit, Option, Typer
 
 from src.core.db import get_session
 from src.core.habit import (
-    ActiveProfileRequired,
     HabitAlreadyCompletedForPeriod,
     HabitAlreadyExists,
     HabitArchived,
@@ -95,11 +94,6 @@ def create(
         print(' - Complete habit: [cyan]habit complete[/cyan]')
         print(' - View due habits: [cyan]habit due[/cyan]')
 
-    except ActiveProfileRequired:
-        print(
-            '[red]No active profile. Use "profile switch" to set an active profile.[/red]'
-        )
-        raise Exit(1)
     except HabitAlreadyExists as e:
         print(f"[red]Habit '{e.name}' already exists for this profile.[/red]")
         raise Exit(1)
@@ -119,56 +113,45 @@ def list_habits(
     """List habits for the active profile."""
     service: HabitService = ctx.obj.habit_service
 
-    try:
-        periodicity_enum = None
-        if periodicity:
-            periodicity_upper = periodicity.upper()
-            if periodicity_upper not in ['DAILY', 'WEEKLY']:
-                print(
-                    f"[red]Invalid periodicity '{periodicity}'. Must be 'daily' or 'weekly'.[/red]"
-                )
-                raise Exit(1)
-            periodicity_enum = Periodicity(periodicity_upper)
-
-        habits = service.list_habits(active_only=not all, periodicity=periodicity_enum)
-
-        if not habits:
-            if all:
-                print(
-                    '[yellow]No habits found. Create one with "habit create".[/yellow]'
-                )
-            else:
-                print(
-                    '[yellow]No active habits found. Create one with "habit create".[/yellow]'
-                )
-            return
-
-        table = Table(title='Habits')
-        table.add_column('ID', justify='right', style='cyan', no_wrap=True)
-        table.add_column('Name', style='magenta')
-        table.add_column('Periodicity', justify='center')
-        table.add_column('Status', justify='center', style='green')
-        table.add_column('Created At', justify='right')
-
-        for habit in habits:
-            status = 'Active' if habit.is_active else 'Archived'
-            table.add_row(
-                str(habit.id),
-                habit.name,
-                habit.periodicity.value,
-                status,
-                habit.created_at.strftime('%Y-%m-%d %H:%M'),
+    periodicity_enum = None
+    if periodicity:
+        periodicity_upper = periodicity.upper()
+        if periodicity_upper not in ['DAILY', 'WEEKLY']:
+            print(
+                f"[red]Invalid periodicity '{periodicity}'. Must be 'daily' or 'weekly'.[/red]"
             )
+            raise Exit(1)
+        periodicity_enum = Periodicity(periodicity_upper)
 
-        console.print(table)
+    habits = service.list_habits(active_only=not all, periodicity=periodicity_enum)
 
-    except ActiveProfileRequired:
-        print(
-            '[yellow]No active profile set. Use "profile switch" to set one.[/yellow]'
+    if not habits:
+        if all:
+            print('[yellow]No habits found. Create one with "habit create".[/yellow]')
+        else:
+            print(
+                '[yellow]No active habits found. Create one with "habit create".[/yellow]'
+            )
+        return
+
+    table = Table(title='Habits')
+    table.add_column('ID', justify='right', style='cyan', no_wrap=True)
+    table.add_column('Name', style='magenta')
+    table.add_column('Periodicity', justify='center')
+    table.add_column('Status', justify='center', style='green')
+    table.add_column('Created At', justify='right')
+
+    for habit in habits:
+        status = 'Active' if habit.is_active else 'Archived'
+        table.add_row(
+            str(habit.id),
+            habit.name,
+            habit.periodicity.value,
+            status,
+            habit.created_at.strftime('%Y-%m-%d %H:%M'),
         )
-        print(
-            '[dim]Tip: Create a profile with "profile create" if you don\'t have one.[/dim]'
-        )
+
+    console.print(table)
 
 
 @cli.command()
@@ -227,28 +210,19 @@ def complete(
             print(f'[green]Habit {habit_id} completed for this period![/green]')
 
         # Show XP reward
-        try:
-            xp_service: XPService = ctx.obj.xp_service
-            _ = xp_service.get_total_xp_for_active_profile()
-            level, xp_into_level, xp_to_next_level = (
-                xp_service.get_level_progress_for_active_profile()
-            )
-            base_xp_line = f'[dim]+1 XP • Level {level} ({xp_into_level}/{xp_into_level + xp_to_next_level})[/dim]'
-            if milestone_events:
-                total_bonus = sum(e.amount for e in milestone_events)
-                print(base_xp_line)
-                print(f'[dim]Milestone! +{total_bonus} XP bonus[/dim]')
-            else:
-                print(base_xp_line)
-        except ActiveProfileRequired:
-            # Should not happen, but handle gracefully
-            pass
-
-    except ActiveProfileRequired:
-        print(
-            '[red]No active profile. Use "profile switch" to set an active profile.[/red]'
+        xp_service: XPService = ctx.obj.xp_service
+        _ = xp_service.get_total_xp_for_active_profile()
+        level, xp_into_level, xp_to_next_level = (
+            xp_service.get_level_progress_for_active_profile()
         )
-        raise Exit(1)
+        base_xp_line = f'[dim]+1 XP • Level {level} ({xp_into_level}/{xp_into_level + xp_to_next_level})[/dim]'
+        if milestone_events:
+            total_bonus = sum(e.amount for e in milestone_events)
+            print(base_xp_line)
+            print(f'[dim]Milestone! +{total_bonus} XP bonus[/dim]')
+        else:
+            print(base_xp_line)
+
     except HabitNotFound:
         print('[red]Habit not found.[/red]')
         raise Exit(1)
@@ -312,11 +286,6 @@ def archive(
         archived_habit = service.archive_habit(habit_id)
         print(f"[green]Habit '{archived_habit.name}' archived.[/green]")
 
-    except ActiveProfileRequired:
-        print(
-            '[red]No active profile. Use "profile switch" to set an active profile.[/red]'
-        )
-        raise Exit(1)
     except HabitNotFound:
         print('[red]Habit not found.[/red]')
         raise Exit(1)
@@ -327,36 +296,25 @@ def due(ctx: Context):
     """List habits that are due (not completed for the current period)."""
     service: HabitService = ctx.obj.habit_service
 
-    try:
-        due_habits = service.get_due_habits()
+    due_habits = service.get_due_habits()
 
-        if not due_habits:
-            print(
-                '[green]All habits are completed for this period! Great job! 🎉[/green]'
-            )
-            return
+    if not due_habits:
+        print('[green]All habits are completed for this period! Great job! 🎉[/green]')
+        return
 
-        table = Table(title='Due Habits')
-        table.add_column('ID', justify='right', style='cyan', no_wrap=True)
-        table.add_column('Name', style='magenta')
-        table.add_column('Periodicity', justify='center')
-        table.add_column('Created At', justify='right')
+    table = Table(title='Due Habits')
+    table.add_column('ID', justify='right', style='cyan', no_wrap=True)
+    table.add_column('Name', style='magenta')
+    table.add_column('Periodicity', justify='center')
+    table.add_column('Created At', justify='right')
 
-        for habit in due_habits:
-            table.add_row(
-                str(habit.id),
-                habit.name,
-                habit.periodicity.value,
-                habit.created_at.strftime('%Y-%m-%d %H:%M'),
-            )
-
-        console.print(table)
-        print('\n[dim]Complete a habit with: [cyan]habit complete[/cyan][/dim]')
-
-    except ActiveProfileRequired:
-        print(
-            '[yellow]No active profile set. Use "profile switch" to set one.[/yellow]'
+    for habit in due_habits:
+        table.add_row(
+            str(habit.id),
+            habit.name,
+            habit.periodicity.value,
+            habit.created_at.strftime('%Y-%m-%d %H:%M'),
         )
-        print(
-            '[dim]Tip: Create a profile with "profile create" if you don\'t have one.[/dim]'
-        )
+
+    console.print(table)
+    print('\n[dim]Complete a habit with: [cyan]habit complete[/cyan][/dim]')

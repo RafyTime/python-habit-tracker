@@ -10,14 +10,12 @@ from sqlmodel.sql.expression import col
 from src.core.analytics.dto import CompletionDTO, HabitDTO
 from src.core.analytics.functions import longest_streak_for_habit
 from src.core.habit.errors import (
-    ActiveProfileRequired,
     HabitAlreadyCompletedForPeriod,
     HabitAlreadyExists,
     HabitArchived,
     HabitNotFound,
 )
 from src.core.models import (
-    AppState,
     Completion,
     Habit,
     Periodicity,
@@ -25,6 +23,7 @@ from src.core.models import (
     XPEvent,
     require_persisted_id,
 )
+from src.core.profile.service import ProfileService
 
 if TYPE_CHECKING:
     from src.core.xp.service import XPService
@@ -76,26 +75,15 @@ class HabitService:
 
     def _get_active_profile(self, session: Session) -> Profile:
         """
-        Get the currently active profile.
+        Get the currently active profile, ensuring one exists.
 
         Args:
             session: The database session to use.
 
         Returns:
             The active Profile instance.
-
-        Raises:
-            ActiveProfileRequired: If no profile is active.
         """
-        state = session.get(AppState, 1)
-        if not state or not state.active_profile_id:
-            raise ActiveProfileRequired()
-
-        profile = session.get(Profile, state.active_profile_id)
-        if not profile:
-            raise ActiveProfileRequired()
-
-        return profile
+        return ProfileService(lambda: iter([session])).ensure_single_profile()
 
     def create_habit(self, name: str, periodicity: Periodicity) -> Habit:
         """
@@ -109,7 +97,6 @@ class HabitService:
             The created Habit instance.
 
         Raises:
-            ActiveProfileRequired: If no profile is active.
             HabitAlreadyExists: If a habit with the same name already exists for the active profile.
         """
         session = self._get_session()
@@ -159,7 +146,6 @@ class HabitService:
             A list of Habit instances matching the criteria.
 
         Raises:
-            ActiveProfileRequired: If no profile is active.
         """
         session = self._get_session()
         profile = self._get_active_profile(session)
@@ -185,7 +171,6 @@ class HabitService:
             The archived Habit instance.
 
         Raises:
-            ActiveProfileRequired: If no profile is active.
             HabitNotFound: If the habit is not found or doesn't belong to the active profile.
         """
         session = self._get_session()
@@ -217,7 +202,6 @@ class HabitService:
             Tuple of (created Completion, list of newly awarded milestone XPEvents).
 
         Raises:
-            ActiveProfileRequired: If no profile is active.
             HabitNotFound: If the habit is not found or doesn't belong to the active profile.
             HabitArchived: If the habit is archived.
             HabitAlreadyCompletedForPeriod: If the habit is already completed for this period.
@@ -305,7 +289,6 @@ class HabitService:
             A list of Habit instances that are due.
 
         Raises:
-            ActiveProfileRequired: If no profile is active.
         """
         session = self._get_session()
         profile = self._get_active_profile(session)
@@ -350,7 +333,6 @@ class HabitService:
             A list of Completion instances for the active profile.
 
         Raises:
-            ActiveProfileRequired: If no profile is active.
         """
         session = self._get_session()
         profile = self._get_active_profile(session)

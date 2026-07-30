@@ -3,6 +3,7 @@
 from collections.abc import Callable, Iterator
 
 from sqlmodel import Session, select
+from sqlmodel.sql.expression import col
 
 from src.core.models import AppState, Profile
 from src.core.profile.errors import ProfileAlreadyExists, ProfileNotFound
@@ -21,9 +22,85 @@ class ProfileService:
         """
         self._session_factory = session_factory
 
+    DEFAULT_DISPLAY_NAME = 'User'
+
     def _get_session(self) -> Session:
         """Get a database session from the factory."""
         return next(self._session_factory())
+
+    def ensure_single_profile(self) -> Profile:
+        """
+        Ensure one usable profile is active.
+
+        On a fresh database, creates a default profile. On legacy multi-profile
+        data, activates the current active profile, else the legacy primary
+        profile, else the earliest profile by creation time. Other legacy
+        profiles are left intact so their data is not discarded.
+        """
+        session = self._get_session()
+        profiles = list(
+            session.exec(select(Profile).order_by(col(Profile.created_at))).all()
+        )
+
+        if not profiles:
+            profile = Profile(username=self.DEFAULT_DISPLAY_NAME)
+            session.add(profile)
+            session.commit()
+            session.refresh(profile)
+            state = AppState(id=1, active_profile_id=profile.id)
+            session.add(state)
+            session.commit()
+            return profile
+
+        state = session.get(AppState, 1)
+        chosen: Profile | None = None
+        if state and state.active_profile_id is not None:
+            chosen = session.get(Profile, state.active_profile_id)
+
+        if chosen is None:
+            chosen = next(
+                (p for p in profiles if p.username == 'primary'),
+                profiles[0],
+            )
+
+        if not state:
+            state = AppState(id=1, active_profile_id=chosen.id)
+            session.add(state)
+        elif state.active_profile_id != chosen.id:
+            state.active_profile_id = chosen.id
+            session.add(state)
+        session.commit()
+        return chosen
+
+    def update_display_name(self, display_name: str) -> Profile:
+        """
+        Update the single profile's display name.
+
+        Args:
+            display_name: The new display name (whitespace-stripped).
+
+        Returns:
+            The updated Profile instance.
+
+        Raises:
+            ValueError: If the display name is empty after stripping.
+        """
+        normalized = display_name.strip()
+        if not normalized:
+            raise ValueError('Display name cannot be empty')
+
+        session = self._get_session()
+        profile = self.ensure_single_profile()
+        # Re-load in this session in case ensure used a prior session handle.
+        profile = session.get(Profile, profile.id)
+        if profile is None:
+            raise RuntimeError('Single profile missing after ensure')
+
+        profile.username = normalized
+        session.add(profile)
+        session.commit()
+        session.refresh(profile)
+        return profile
 
     def create_profile(self, username: str) -> Profile:
         """
@@ -66,18 +143,14 @@ class ProfileService:
         session = self._get_session()
         return list(session.exec(select(Profile)).all())
 
-    def get_active_profile(self) -> Profile | None:
+    def get_active_profile(self) -> Profile:
         """
-        Get the currently active profile.
+        Get the currently active profile, ensuring one exists.
 
         Returns:
-            The active Profile instance, or None if no profile is active.
+            The active Profile instance.
         """
-        session = self._get_session()
-        state = session.get(AppState, 1)
-        if state and state.active_profile_id:
-            return session.get(Profile, state.active_profile_id)
-        return None
+        return self.ensure_single_profile()
 
     def switch_active_profile(self, username: str) -> Profile:
         """

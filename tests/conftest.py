@@ -25,7 +25,7 @@ def mock_get_session(session: Session):
     """
     # Use side_effect to return a new iterator each time get_session is called
     with (
-        patch('src.cli.profile.get_session', side_effect=lambda: iter([session])),
+        patch('src.cli.settings.get_session', side_effect=lambda: iter([session])),
         patch('src.cli.habit.get_session', side_effect=lambda: iter([session])),
         patch('src.cli.xp.get_session', side_effect=lambda: iter([session])),
         patch('src.cli.overview.get_session', side_effect=lambda: iter([session])),

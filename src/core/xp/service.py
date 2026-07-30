@@ -5,8 +5,8 @@ from math import floor
 
 from sqlmodel import Session, func, select
 
-from src.core.models import AppState, Profile, XPEvent, require_persisted_id
-from src.core.xp.errors import ActiveProfileRequired
+from src.core.models import Profile, XPEvent, require_persisted_id
+from src.core.profile.service import ProfileService
 
 # Milestone streak targets (inclusive) - user gets +5 XP once per target per habit
 MILESTONE_STREAK_TARGETS: tuple[int, ...] = (3, 7, 14, 30)
@@ -32,26 +32,15 @@ class XPService:
 
     def _get_active_profile(self, session: Session) -> Profile:
         """
-        Get the currently active profile.
+        Get the currently active profile, ensuring one exists.
 
         Args:
             session: The database session to use.
 
         Returns:
             The active Profile instance.
-
-        Raises:
-            ActiveProfileRequired: If no profile is active.
         """
-        state = session.get(AppState, 1)
-        if not state or not state.active_profile_id:
-            raise ActiveProfileRequired()
-
-        profile = session.get(Profile, state.active_profile_id)
-        if not profile:
-            raise ActiveProfileRequired()
-
-        return profile
+        return ProfileService(lambda: iter([session])).ensure_single_profile()
 
     def award_habit_completion(
         self, session: Session, profile_id: int, habit_id: int, completion_id: int
@@ -196,7 +185,6 @@ class XPService:
             The total XP for the active profile.
 
         Raises:
-            ActiveProfileRequired: If no profile is active.
         """
         session = self._get_session()
         profile = self._get_active_profile(session)
@@ -211,7 +199,6 @@ class XPService:
             A tuple of (level, xp_into_level, xp_to_next_level).
 
         Raises:
-            ActiveProfileRequired: If no profile is active.
         """
         session = self._get_session()
         profile = self._get_active_profile(session)

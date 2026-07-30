@@ -9,12 +9,17 @@ from src.core.models import Completion, Habit, Periodicity, Profile, XPEvent
 runner = CliRunner()
 
 
-def test_xp_status_no_active_profile(session: Session):
-    """Test that xp status with no active profile shows friendly guidance."""
+def test_xp_status_on_fresh_database(session: Session):
+    """Fresh install can show XP status without profile create/switch guidance."""
+    from src.core.profile import ProfileService
+
+    ProfileService(lambda: iter([session])).ensure_single_profile()
+
     result = runner.invoke(cli, ['status'])
-    assert result.exit_code == 1
-    assert 'No active profile' in result.stdout
-    assert 'profile switch' in result.stdout
+    assert result.exit_code == 0
+    assert 'Total XP: 0' in result.stdout
+    assert 'profile switch' not in result.stdout
+    assert 'profile create' not in result.stdout
 
 
 def test_xp_status_shows_totals(session: Session, active_profile: Profile):
@@ -48,11 +53,16 @@ def test_xp_status_level_2(session: Session, active_profile: Profile):
     assert 'Level: 2' in result.stdout
 
 
-def test_xp_log_no_active_profile(session: Session):
-    """Test that xp log with no active profile shows friendly guidance."""
+def test_xp_log_on_fresh_database(session: Session):
+    """Fresh install can show XP log without profile create/switch guidance."""
+    from src.core.profile import ProfileService
+
+    ProfileService(lambda: iter([session])).ensure_single_profile()
+
     result = runner.invoke(cli, ['log'])
-    assert result.exit_code == 1
-    assert 'No active profile' in result.stdout
+    assert result.exit_code == 0
+    assert 'No XP events found' in result.stdout
+    assert 'profile switch' not in result.stdout
 
 
 def test_xp_log_shows_events(session: Session, active_profile: Profile):

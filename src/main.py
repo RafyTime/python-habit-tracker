@@ -7,7 +7,7 @@ from typer import Exit, Option, Typer
 from src.cli.analytics import cli as analytics_cli
 from src.cli.habit import cli as habit_cli
 from src.cli.overview import cli as overview_cli
-from src.cli.profile import cli as profile_cli
+from src.cli.settings import cli as settings_cli
 from src.cli.xp import cli as xp_cli
 from src.core.config import app_settings
 from src.core.db import init_db
@@ -20,7 +20,7 @@ app = Typer(
     epilog=f'Version: {app_settings.PROJECT_VERSION}',
 )
 app.add_typer(habit_cli, name='habit', help='Manage habits')
-app.add_typer(profile_cli, name='profile', help='Manage user profiles')
+app.add_typer(settings_cli, name='settings', help='View and update profile settings')
 app.add_typer(xp_cli, name='xp', help='XP and level progress')
 app.add_typer(overview_cli, name='overview', help='Daily snapshot')
 app.add_typer(analytics_cli, name='analytics', help='Analytics')

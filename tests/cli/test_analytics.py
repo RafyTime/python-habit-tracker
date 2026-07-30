@@ -11,11 +11,16 @@ from src.core.models import Completion, Habit, Periodicity, Profile
 runner = CliRunner()
 
 
-def test_analytics_habits_no_active_profile(session: Session):
-    """Test that analytics habits with no active profile shows friendly guidance."""
+def test_analytics_habits_on_fresh_database(session: Session):
+    """Fresh install can run analytics without profile create/switch guidance."""
+    from src.core.profile import ProfileService
+
+    ProfileService(lambda: iter([session])).ensure_single_profile()
+
     result = runner.invoke(cli, ['habits'])
     assert result.exit_code == 0
-    assert 'No active profile set' in result.stdout
+    assert 'profile switch' not in result.stdout
+    assert 'profile create' not in result.stdout
 
 
 def test_analytics_habits_no_habits(session: Session, active_profile: Profile):

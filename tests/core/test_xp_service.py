@@ -1,10 +1,9 @@
 from datetime import datetime
 
-import pytest
 from sqlmodel import Session
 
 from src.core.models import Completion, Habit, Periodicity, Profile, XPEvent
-from src.core.xp import ActiveProfileRequired, XPService
+from src.core.xp import XPService
 
 
 def test_award_habit_completion_creates_event(
@@ -157,22 +156,23 @@ def test_compute_level_progress():
     assert xp_to_next == 5
 
 
-def test_get_total_xp_for_active_profile_requires_active_profile(session: Session):
-    """Test that get_total_xp_for_active_profile requires an active profile."""
+def test_get_total_xp_for_active_profile_auto_ensures_profile(session: Session):
+    """get_total_xp_for_active_profile auto-ensures a usable profile."""
     service = XPService(lambda: iter([session]))
 
-    with pytest.raises(ActiveProfileRequired):
-        service.get_total_xp_for_active_profile()
+    assert service.get_total_xp_for_active_profile() == 0
 
 
-def test_get_level_progress_for_active_profile_requires_active_profile(
+def test_get_level_progress_for_active_profile_auto_ensures_profile(
     session: Session,
 ):
-    """Test that get_level_progress_for_active_profile requires an active profile."""
+    """get_level_progress_for_active_profile auto-ensures a usable profile."""
     service = XPService(lambda: iter([session]))
 
-    with pytest.raises(ActiveProfileRequired):
-        service.get_level_progress_for_active_profile()
+    level, xp_into_level, xp_to_next = service.get_level_progress_for_active_profile()
+    assert level == 1
+    assert xp_into_level == 0
+    assert xp_to_next == 10
 
 
 def test_award_milestone_xp_when_streak_hits_target(

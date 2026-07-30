@@ -4,7 +4,6 @@ import pytest
 from sqlmodel import Session
 
 from src.core.habit import (
-    ActiveProfileRequired,
     HabitAlreadyCompletedForPeriod,
     HabitAlreadyExists,
     HabitArchived,
@@ -15,12 +14,14 @@ from src.core.models import Completion, Habit, Periodicity, Profile, XPEvent
 from src.core.xp import XPService
 
 
-def test_create_habit_requires_active_profile(session: Session):
-    """Test that creating a habit requires an active profile."""
+def test_create_habit_auto_ensures_profile(session: Session):
+    """Creating a habit on a fresh database auto-ensures a usable profile."""
     service = HabitService(lambda: iter([session]))
 
-    with pytest.raises(ActiveProfileRequired):
-        service.create_habit('Test Habit', Periodicity.DAILY)
+    habit = service.create_habit('Test Habit', Periodicity.DAILY)
+
+    assert habit.name == 'Test Habit'
+    assert habit.profile_id is not None
 
 
 def test_create_habit_rejects_empty_name(session: Session, active_profile: Profile):
@@ -268,12 +269,12 @@ def test_get_due_habits(session: Session, active_profile: Profile):
     assert due_habits[0].id == habit1.id
 
 
-def test_get_due_habits_requires_active_profile(session: Session):
-    """Test that get_due_habits requires an active profile."""
+def test_get_due_habits_auto_ensures_profile(session: Session):
+    """get_due_habits on a fresh database auto-ensures a usable profile."""
     service = HabitService(lambda: iter([session]))
 
-    with pytest.raises(ActiveProfileRequired):
-        service.get_due_habits()
+    due_habits = service.get_due_habits()
+    assert due_habits == []
 
 
 def test_complete_habit_awards_xp_when_xp_service_injected(

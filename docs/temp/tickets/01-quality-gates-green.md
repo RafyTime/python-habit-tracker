@@ -6,8 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] The project quality script checks application and test code consistently, including formatting, linting, and source type checking.
-- [ ] The linter passes with no source suppressions; test-only unused fixture parameters are handled by a narrow pytest-aware configuration.
-- [ ] The type checker reports no diagnostics in application code, including session lifecycle and persisted-ID handling.
-- [ ] The full test suite remains green and CI uses the same checks.
-
+- [x] The project quality script checks application and test code consistently, including formatting, linting, and source type checking.
+- [x] The linter passes with no source suppressions; test-only unused fixture parameters are handled by a narrow pytest-aware configuration.
+- [x] The type checker reports no diagnostics in application code, including session lifecycle and persisted-ID handling.
+- [x] The full test suite remains green and CI uses the same checks.

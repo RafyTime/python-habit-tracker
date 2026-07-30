@@ -12,7 +12,7 @@ class ActiveProfileRequired(HabitError):
 
     def __init__(self) -> None:
         super().__init__(
-            "No active profile. Use 'profile switch' to set an active profile."
+            'No usable profile is available. Restart the app to initialize one.'
         )
 
 

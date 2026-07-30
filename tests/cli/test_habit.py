@@ -10,12 +10,16 @@ from src.core.models import Completion, Habit, Periodicity, Profile, XPEvent
 runner = CliRunner()
 
 
-def test_list_habits_no_active_profile(session: Session):
-    """Test that listing habits with no active profile shows friendly guidance."""
+def test_list_habits_on_fresh_database(session: Session):
+    """Fresh install can list habits without profile create/switch guidance."""
+    from src.core.profile import ProfileService
+
+    ProfileService(lambda: iter([session])).ensure_single_profile()
+
     result = runner.invoke(cli, ['list'])
     assert result.exit_code == 0
-    assert 'No active profile set' in result.stdout
-    assert 'profile switch' in result.stdout
+    assert 'profile switch' not in result.stdout
+    assert 'profile create' not in result.stdout
 
 
 def test_create_habit_non_interactive(session: Session, active_profile: Profile):
@@ -44,11 +48,17 @@ def test_create_habit_interactive(session: Session, active_profile: Profile):
         assert "Habit 'Read' created successfully!" in result.stdout
 
 
-def test_create_habit_no_active_profile(session: Session):
-    """Test creating a habit with no active profile."""
-    result = runner.invoke(cli, ['create', 'Test', '--periodicity', 'daily'])
-    assert result.exit_code == 1
-    assert 'No active profile' in result.stdout
+def test_fresh_database_can_create_habit_without_profile_setup(session: Session):
+    """Fresh install has an automatic profile so habit create works immediately."""
+    from src.core.profile import ProfileService
+
+    ProfileService(lambda: iter([session])).ensure_single_profile()
+
+    result = runner.invoke(cli, ['create', 'Exercise', '--periodicity', 'daily'])
+    assert result.exit_code == 0
+    assert "Habit 'Exercise' created successfully!" in result.stdout
+    assert 'profile switch' not in result.stdout
+    assert 'profile create' not in result.stdout
 
 
 def test_list_habits(session: Session, active_profile: Profile):
@@ -272,11 +282,16 @@ def test_due_habits_all_completed(session: Session, active_profile: Profile):
     assert 'All habits are completed' in result.stdout or 'Great job' in result.stdout
 
 
-def test_due_habits_no_active_profile(session: Session):
-    """Test listing due habits with no active profile."""
+def test_due_habits_on_fresh_database(session: Session):
+    """Fresh install can list due habits without profile create/switch guidance."""
+    from src.core.profile import ProfileService
+
+    ProfileService(lambda: iter([session])).ensure_single_profile()
+
     result = runner.invoke(cli, ['due'])
     assert result.exit_code == 0
-    assert 'No active profile set' in result.stdout
+    assert 'profile switch' not in result.stdout
+    assert 'profile create' not in result.stdout
 
 
 def test_complete_habit_shows_milestone_message(
