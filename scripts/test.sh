@@ -3,4 +3,4 @@
 set -e
 set -x
 
-python scripts/quality.py test "${@:-coverage}"
+python scripts/quality.py test

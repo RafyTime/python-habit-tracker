@@ -27,7 +27,6 @@ def test_quality_script_runs_every_required_gate() -> None:
     assert TEST_COMMANDS == (
         ('coverage', 'run', '-m', 'pytest', 'tests/'),
         ('coverage', 'report'),
-        ('coverage', 'html', '--title', 'coverage'),
     )
     assert QUALITY_COMMANDS == LINT_COMMANDS + TEST_COMMANDS
     assert FORMAT_COMMANDS == (
@@ -54,6 +53,8 @@ def test_ci_publishes_coverage_for_the_readme_badge() -> None:
     assert 'coverage report --format=total' in ci_workflow
     assert '--field context=coverage' in ci_workflow
     assert '--field description="coverage: ${coverage}%"' in ci_workflow
+    assert 'actions/upload-artifact' not in ci_workflow
+    assert 'htmlcov' not in ci_workflow
 
 
 def test_unused_fixture_arguments_are_ignored_only_in_tests() -> None:

@@ -13,7 +13,6 @@ LINT_COMMANDS: tuple[tuple[str, ...], ...] = (
 TEST_COMMANDS: tuple[tuple[str, ...], ...] = (
     ('coverage', 'run', '-m', 'pytest', 'tests/'),
     ('coverage', 'report'),
-    ('coverage', 'html', '--title', 'coverage'),
 )
 QUALITY_COMMANDS = LINT_COMMANDS + TEST_COMMANDS
 FORMAT_COMMANDS: tuple[tuple[str, ...], ...] = (
@@ -22,17 +21,13 @@ FORMAT_COMMANDS: tuple[tuple[str, ...], ...] = (
 )
 
 
-def _commands_for(workflow: str, coverage_title: str) -> tuple[tuple[str, ...], ...]:
-    workflows = {
+def _commands_for(workflow: str) -> tuple[tuple[str, ...], ...]:
+    return {
         'quality': QUALITY_COMMANDS,
         'format': FORMAT_COMMANDS,
         'lint': LINT_COMMANDS,
         'test': TEST_COMMANDS,
-    }
-    commands = workflows[workflow]
-    if workflow in {'quality', 'test'} and coverage_title != 'coverage':
-        commands = commands[:-1] + (('coverage', 'html', '--title', coverage_title),)
-    return commands
+    }[workflow]
 
 
 def main() -> None:
@@ -43,10 +38,9 @@ def main() -> None:
         default='quality',
         nargs='?',
     )
-    parser.add_argument('coverage_title', default='coverage', nargs='?')
     arguments = parser.parse_args()
 
-    for command in _commands_for(arguments.workflow, arguments.coverage_title):
+    for command in _commands_for(arguments.workflow):
         subprocess.run(command, cwd=PROJECT_ROOT, check=True)
 
 
