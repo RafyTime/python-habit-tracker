@@ -50,6 +50,7 @@ class ProfileService:
             state = AppState(id=1, active_profile_id=profile.id)
             session.add(state)
             session.commit()
+            session.refresh(profile)
             return profile
 
         state = session.get(AppState, 1)
@@ -70,6 +71,7 @@ class ProfileService:
             state.active_profile_id = chosen.id
             session.add(state)
         session.commit()
+        session.refresh(chosen)
         return chosen
 
     def update_display_name(self, display_name: str) -> Profile:
