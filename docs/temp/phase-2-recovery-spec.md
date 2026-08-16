@@ -27,8 +27,6 @@ The primary seam is the command line: commands persist state, then return clear 
 13. As a new user, I want a concise README quick start and a fuller user guide, so that I can choose the right amount of guidance.
 14. As a portfolio evaluator, I want a short visual Phase 2 presentation that explains the implemented design, tools, user flow, and validation evidence, so that the solution is easy to assess.
 
-
-
 ## Implementation Decisions
 
 - The required scope is daily and weekly positive habits, completions, SQLite persistence, functional analytics, a CLI, fixture data, tests, and documentation.
@@ -45,8 +43,6 @@ The primary seam is the command line: commands persist state, then return clear 
 - CI runs the same intended quality commands contributors run locally. Pytest fixture injection may be excluded from unused-argument linting in test files only; source diagnostics are fixed rather than suppressed.
 - The submitted Phase 1 PDF remains a historical artefact. Phase 2 documentation and the presentation explain the deliberate scope refinement instead of pretending no divergence occurred.
 
-
-
 ## Testing Decisions
 
 - Test observable behaviour through the CLI and isolated SQLite persistence: fresh startup, create, complete, due, archive, delete, analytics, overview, and user-facing confirmation/error text.
@@ -55,8 +51,6 @@ The primary seam is the command line: commands persist state, then return clear 
 - Test legacy-data migration with representative active and inactive profile states. Verify the migration preserves the chosen profile's records and does not silently discard data.
 - Keep formatter, linter, and type checks as zero-warning gates. Test-only lint configuration is limited to pytest's injected fixture parameters.
 - Retain the existing command tests as prior art, but reorganize or replace them where they assert obsolete multi-profile behaviour or implementation detail.
-
-
 
 ## Out of Scope
 
@@ -67,12 +61,9 @@ The primary seam is the command line: commands persist state, then return clear 
 - Rewriting or re-submitting the original Phase 1 conception PDF.
 - Final Phase 3 abstract, release ZIP, and PebblePad submission.
 
-
-
 ## Further Notes
 
 - The primary success measure is a first-time user reaching `create -> complete -> analyse` without profile setup or unexplained commands.
 - The full user guide should be practical rather than exhaustive: installation, first run, command examples, habit lifecycle, analytics, fixture data, and troubleshooting.
 - The Phase 2 presentation should be 5-10 customer-facing slides and contain visual evidence of the real, final implementation.
 - Use Gitmoji standards on commits.
-

@@ -4,7 +4,7 @@
 
 **Blocked by:** 07 — Complete the final codebase cleanup and verification pass.
 
-**Status:** ready-for-agent
+**Status:** ready
 
 - [ ] The presentation contains 5-10 structured slides with visual elements and explains the chosen Python, persistence, CLI, testing, and quality tools.
 - [ ] It shows the final user flow and data model, including daily/weekly periods, archive/delete behaviour, functional analytics, and fixture data.

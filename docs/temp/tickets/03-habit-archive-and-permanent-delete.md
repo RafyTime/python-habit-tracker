@@ -4,11 +4,10 @@
 
 **Blocked by:** 02 — Replace profile selection with an automatic single profile.
 
-**Status:** ready-for-agent
+**Status:** dones
 
-- [ ] Archiving removes a habit from active lists and due prompts while retaining completion records and XP events.
-- [ ] Permanent deletion requires confirmation unless explicitly forced and plainly states that completion history, XP, and historical analytics will change.
-- [ ] Permanent deletion removes the habit and all dependent completion and XP records atomically; remaining XP totals and analytics reflect only remaining data.
-- [ ] Current views exclude archived habits, while any historical analytics inclusion is explicit and labelled.
-- [ ] CLI and service-level tests cover archive, forced and confirmed deletion, cancellation, and dependent-history effects.
-
+- [x] Archiving removes a habit from active lists and due prompts while retaining completion records and XP events.
+- [x] Permanent deletion requires confirmation unless explicitly forced and plainly states that completion history, XP, and historical analytics will change.
+- [x] Permanent deletion removes the habit and all dependent completion and XP records atomically; remaining XP totals and analytics reflect only remaining data.
+- [x] Current views exclude archived habits, while any historical analytics inclusion is explicit and labelled.
+- [x] CLI and service-level tests cover archive, forced and confirmed deletion, cancellation, and dependent-history effects.

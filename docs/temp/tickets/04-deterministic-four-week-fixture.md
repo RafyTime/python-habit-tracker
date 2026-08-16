@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — Replace profile selection with an automatic single profile.
 
-**Status:** ready-for-agent
+**Status:** ready
 
 - [ ] Seeding creates exactly the required predefined habits for the single profile, including daily and weekly habits.
 - [ ] Every predefined habit has completion history spanning four weeks and a creation date that precedes its first completion.
@@ -12,4 +12,3 @@
 - [ ] A supplied reference time makes the fixture deterministic and repeatable; repeat seeding is idempotent.
 - [ ] XP events, milestone behaviour retained by the scope, and analytics results are consistent with the stored fixture records.
 - [ ] Automated tests validate the complete seeded outcome rather than only individual insertions.
-
