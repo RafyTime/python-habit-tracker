@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] The project quality script checks application and test code consistently, including formatting, linting, and source type checking.
 - [x] The linter passes with no source suppressions; test-only unused fixture parameters are handled by a narrow pytest-aware configuration.
