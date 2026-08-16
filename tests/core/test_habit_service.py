@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import pytest
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from src.core.habit import (
     HabitAlreadyCompletedForPeriod,
@@ -184,6 +184,50 @@ def test_archive_habit_not_found(session: Session, active_profile: Profile):
         service.archive_habit(999)
 
 
+def test_archive_habit_retains_completions_and_xp(
+    session: Session, active_profile: Profile
+):
+    """Archiving hides a habit without deleting its completion or XP history."""
+    service = HabitService(lambda: iter([session]))
+
+    habit = Habit(
+        profile_id=active_profile.id,
+        name='To Archive',
+        periodicity=Periodicity.DAILY,
+        is_active=True,
+    )
+    session.add(habit)
+    session.commit()
+
+    completion = Completion(
+        habit_id=habit.id,
+        completed_at=datetime(2025, 1, 1),
+        period_key='2025-01-01',
+    )
+    session.add(completion)
+    session.commit()
+
+    xp_event = XPEvent(
+        profile_id=active_profile.id,
+        amount=1,
+        reason='HABIT_COMPLETION',
+        habit_id=habit.id,
+        completion_id=completion.id,
+    )
+    session.add(xp_event)
+    session.commit()
+
+    service.archive_habit(habit.id)
+
+    db_habit = session.get(Habit, habit.id)
+    assert db_habit is not None
+    assert db_habit.is_active is False
+    assert session.get(Completion, completion.id) is not None
+    assert session.get(XPEvent, xp_event.id) is not None
+    assert list(session.exec(select(Completion).where(Completion.habit_id == habit.id)))
+    assert list(session.exec(select(XPEvent).where(XPEvent.habit_id == habit.id)))
+
+
 def test_complete_habit_creates_completion(session: Session, active_profile: Profile):
     """Test that completing a habit creates a completion record."""
     service = HabitService(lambda: iter([session]))
@@ -269,6 +313,26 @@ def test_get_due_habits(session: Session, active_profile: Profile):
     assert due_habits[0].id == habit1.id
 
 
+def test_get_due_habits_excludes_archived(session: Session, active_profile: Profile):
+    """Archived habits are omitted from due prompts even when incomplete."""
+    service = HabitService(lambda: iter([session]))
+
+    due_habit = Habit(
+        profile_id=active_profile.id, name='Due', periodicity=Periodicity.DAILY
+    )
+    archived_habit = Habit(
+        profile_id=active_profile.id,
+        name='Archived',
+        periodicity=Periodicity.DAILY,
+        is_active=False,
+    )
+    session.add_all([due_habit, archived_habit])
+    session.commit()
+
+    due_habits = service.get_due_habits()
+    assert [habit.id for habit in due_habits] == [due_habit.id]
+
+
 def test_get_due_habits_auto_ensures_profile(session: Session):
     """get_due_habits on a fresh database auto-ensures a usable profile."""
     service = HabitService(lambda: iter([session]))
@@ -350,3 +414,153 @@ def test_complete_habit_at_milestone_awards_milestone_xp(
     assert len(milestone_events) == 1
     assert milestone_events[0].amount == 5
     assert milestone_events[0].reason == 'MILESTONE_STREAK_3'
+
+
+def test_delete_habit_removes_habit_and_dependent_history(
+    session: Session, active_profile: Profile
+):
+    """Permanent deletion removes the habit plus its completions and XP events."""
+    service = HabitService(lambda: iter([session]))
+
+    habit = Habit(
+        profile_id=active_profile.id,
+        name='To Delete',
+        periodicity=Periodicity.DAILY,
+    )
+    session.add(habit)
+    session.commit()
+
+    completion = Completion(
+        habit_id=habit.id,
+        completed_at=datetime(2025, 1, 1),
+        period_key='2025-01-01',
+    )
+    session.add(completion)
+    session.commit()
+
+    completion_xp = XPEvent(
+        profile_id=active_profile.id,
+        amount=1,
+        reason='HABIT_COMPLETION',
+        habit_id=habit.id,
+        completion_id=completion.id,
+    )
+    milestone_xp = XPEvent(
+        profile_id=active_profile.id,
+        amount=5,
+        reason='MILESTONE_STREAK_3',
+        habit_id=habit.id,
+        completion_id=None,
+    )
+    session.add_all([completion_xp, milestone_xp])
+    session.commit()
+
+    deleted_name = service.delete_habit(habit.id)
+
+    assert deleted_name == 'To Delete'
+    assert session.get(Habit, habit.id) is None
+    assert session.get(Completion, completion.id) is None
+    assert session.get(XPEvent, completion_xp.id) is None
+    assert session.get(XPEvent, milestone_xp.id) is None
+    assert (
+        list(session.exec(select(Completion).where(Completion.habit_id == habit.id)))
+        == []
+    )
+    assert list(session.exec(select(XPEvent).where(XPEvent.habit_id == habit.id))) == []
+
+
+def test_delete_habit_leaves_remaining_xp_and_history(
+    session: Session, active_profile: Profile
+):
+    """XP totals and remaining habit history reflect only undeleted data."""
+    xp_service = XPService(lambda: iter([session]))
+    service = HabitService(lambda: iter([session]))
+
+    kept_habit = Habit(
+        profile_id=active_profile.id,
+        name='Keep',
+        periodicity=Periodicity.DAILY,
+    )
+    deleted_habit = Habit(
+        profile_id=active_profile.id,
+        name='Delete',
+        periodicity=Periodicity.DAILY,
+    )
+    session.add_all([kept_habit, deleted_habit])
+    session.commit()
+
+    kept_completion = Completion(
+        habit_id=kept_habit.id,
+        completed_at=datetime(2025, 1, 1),
+        period_key='2025-01-01',
+    )
+    deleted_completion = Completion(
+        habit_id=deleted_habit.id,
+        completed_at=datetime(2025, 1, 2),
+        period_key='2025-01-02',
+    )
+    session.add_all([kept_completion, deleted_completion])
+    session.commit()
+
+    session.add_all(
+        [
+            XPEvent(
+                profile_id=active_profile.id,
+                amount=1,
+                reason='HABIT_COMPLETION',
+                habit_id=kept_habit.id,
+                completion_id=kept_completion.id,
+            ),
+            XPEvent(
+                profile_id=active_profile.id,
+                amount=1,
+                reason='HABIT_COMPLETION',
+                habit_id=deleted_habit.id,
+                completion_id=deleted_completion.id,
+            ),
+        ]
+    )
+    session.commit()
+
+    service.delete_habit(deleted_habit.id)
+
+    assert session.get(Habit, kept_habit.id) is not None
+    assert session.get(Completion, kept_completion.id) is not None
+    assert xp_service.get_total_xp(session, active_profile.id) == 1
+
+
+def test_delete_habit_not_found(session: Session, active_profile: Profile):
+    """Deleting a missing habit raises HabitNotFound."""
+    service = HabitService(lambda: iter([session]))
+
+    with pytest.raises(HabitNotFound):
+        service.delete_habit(999)
+
+
+def test_delete_archived_habit_removes_history(
+    session: Session, active_profile: Profile
+):
+    """An archived habit can still be permanently deleted with its history."""
+    service = HabitService(lambda: iter([session]))
+
+    habit = Habit(
+        profile_id=active_profile.id,
+        name='Archived',
+        periodicity=Periodicity.DAILY,
+        is_active=False,
+    )
+    session.add(habit)
+    session.commit()
+
+    completion = Completion(
+        habit_id=habit.id,
+        completed_at=datetime(2025, 1, 1),
+        period_key='2025-01-01',
+    )
+    session.add(completion)
+    session.commit()
+
+    service.delete_habit(habit.id)
+
+    assert session.get(Habit, habit.id) is None
+    assert session.get(Completion, completion.id) is None

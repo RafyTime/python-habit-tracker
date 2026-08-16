@@ -188,6 +188,52 @@ class HabitService:
 
         return habit
 
+    def delete_habit(self, habit_id: int) -> str:
+        """
+        Permanently delete a habit and its dependent completion and XP records.
+
+        Args:
+            habit_id: The ID of the habit to delete.
+
+        Returns:
+            The name of the deleted habit.
+
+        Raises:
+            HabitNotFound: If the habit is not found or doesn't belong to the active profile.
+        """
+        session = self._get_session()
+        profile = self._get_active_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Active profile')
+
+        habit = session.get(Habit, habit_id)
+        if not habit or habit.profile_id != profile_id:
+            raise HabitNotFound(habit_id=habit_id)
+
+        habit_name = habit.name
+
+        """
+        ADR: Here I had a couple options, whether to manually delete the completions and xp events or to use the cascade delete on the database (which was my first thought). Ended up going with manually deleting then as it's more explicit and easier to understand.
+        """
+        xp_events = list(
+            session.exec(select(XPEvent).where(XPEvent.habit_id == habit_id))
+        )
+        completions = list(
+            session.exec(select(Completion).where(Completion.habit_id == habit_id))
+        )
+
+        try:
+            for event in xp_events:
+                session.delete(event)
+            for completion in completions:
+                session.delete(completion)
+            session.delete(habit)
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+
+        return habit_name
+
     def complete_habit(
         self, habit_id: int, when: datetime | None = None
     ) -> tuple[Completion, list[XPEvent]]:

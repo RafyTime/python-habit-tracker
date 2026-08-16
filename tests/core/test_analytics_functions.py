@@ -4,6 +4,7 @@ from datetime import datetime
 
 from src.core.analytics.dto import CompletionDTO, HabitDTO
 from src.core.analytics.functions import (
+    filter_habits_by_archived_inclusion,
     filter_habits_by_periodicity,
     list_all_habits,
     longest_streak_across_habits,
@@ -423,3 +424,84 @@ def test_longest_streak_across_habits_tie_breaking():
     assert result.length == 2
     assert result.habit_id == 1  # Lower ID wins in tie
     assert result.habit_name == 'Habit 1'
+    assert result.periodicity == Periodicity.DAILY
+
+
+def test_filter_habits_by_archived_inclusion_excludes_archived_by_default():
+    """Archived habits are omitted from analytics unless explicitly included."""
+    habits = [
+        HabitDTO(
+            id=1,
+            name='Active Habit',
+            periodicity=Periodicity.DAILY,
+            created_at=datetime.now(),
+            is_active=True,
+        ),
+        HabitDTO(
+            id=2,
+            name='Archived Habit',
+            periodicity=Periodicity.DAILY,
+            created_at=datetime.now(),
+            is_active=False,
+        ),
+    ]
+
+    active_only = filter_habits_by_archived_inclusion(habits, include_archived=False)
+    assert [habit.id for habit in active_only] == [1]
+
+    including_archived = filter_habits_by_archived_inclusion(
+        habits, include_archived=True
+    )
+    assert [habit.id for habit in including_archived] == [1, 2]
+
+
+def test_longest_streak_across_habits_archived_inclusion():
+    """Including archived history can change the longest-streak result."""
+    habits = [
+        HabitDTO(
+            id=1,
+            name='Active Habit',
+            periodicity=Periodicity.DAILY,
+            created_at=datetime.now(),
+            is_active=True,
+        ),
+        HabitDTO(
+            id=2,
+            name='Archived Habit',
+            periodicity=Periodicity.DAILY,
+            created_at=datetime.now(),
+            is_active=False,
+        ),
+    ]
+    completions = [
+        CompletionDTO(
+            habit_id=1,
+            completed_at=datetime(2025, 1, 1),
+            period_key='2025-01-01',
+        ),
+        CompletionDTO(
+            habit_id=2,
+            completed_at=datetime(2025, 1, 1),
+            period_key='2025-01-01',
+        ),
+        CompletionDTO(
+            habit_id=2,
+            completed_at=datetime(2025, 1, 2),
+            period_key='2025-01-02',
+        ),
+        CompletionDTO(
+            habit_id=2,
+            completed_at=datetime(2025, 1, 3),
+            period_key='2025-01-03',
+        ),
+    ]
+
+    active_habits = filter_habits_by_archived_inclusion(habits, include_archived=False)
+    active_result = longest_streak_across_habits(active_habits, completions)
+    assert active_result.length == 1
+    assert active_result.habit_name == 'Active Habit'
+
+    all_habits = filter_habits_by_archived_inclusion(habits, include_archived=True)
+    archived_result = longest_streak_across_habits(all_habits, completions)
+    assert archived_result.length == 3
+    assert archived_result.habit_name == 'Archived Habit'

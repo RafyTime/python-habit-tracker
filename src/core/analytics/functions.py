@@ -36,6 +36,24 @@ def filter_habits_by_periodicity(
     return [h for h in habits if h.periodicity == periodicity]
 
 
+def filter_habits_by_archived_inclusion(
+    habits: Sequence[HabitDTO], *, include_archived: bool
+) -> list[HabitDTO]:
+    """
+    Filter habits depending on whether archived history should be included.
+
+    Args:
+        habits: Sequence of habit DTOs.
+        include_archived: If True, return all habits. If False, return active habits only.
+
+    Returns:
+        List of habit DTOs matching the archived-inclusion choice.
+    """
+    if include_archived:
+        return list(habits)
+    return [habit for habit in habits if habit.is_active]
+
+
 def _parse_period_key_to_ordinal(period_key: str, periodicity: Periodicity) -> int:
     """
     Parse a period key into an integer timeline index (ordinal).

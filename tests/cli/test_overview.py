@@ -67,6 +67,26 @@ def test_overview_shows_due_habits_and_xp(session: Session, active_profile: Prof
     assert 'Level: 1' in result.stdout
 
 
+def test_overview_excludes_archived_habits(session: Session, active_profile: Profile):
+    """Daily overview due list omits archived habits."""
+    due_habit = Habit(
+        profile_id=active_profile.id, name='Due Habit', periodicity=Periodicity.DAILY
+    )
+    archived_habit = Habit(
+        profile_id=active_profile.id,
+        name='Archived Habit',
+        periodicity=Periodicity.DAILY,
+        is_active=False,
+    )
+    session.add_all([due_habit, archived_habit])
+    session.commit()
+
+    result = runner.invoke(cli, ['daily'])
+    assert result.exit_code == 0
+    assert 'Due Habit' in result.stdout
+    assert 'Archived Habit' not in result.stdout
+
+
 def test_overview_all_habits_completed(session: Session, active_profile: Profile):
     """Test that overview shows message when all habits are completed."""
     habit = Habit(

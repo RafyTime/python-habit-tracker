@@ -43,7 +43,7 @@ def test_analytics_habits_shows_table(session: Session, active_profile: Profile)
         profile_id=active_profile.id,
         name='Read',
         periodicity=Periodicity.WEEKLY,
-        is_active=False,
+        is_active=True,
     )
     session.add_all([habit1, habit2])
     session.commit()
@@ -55,7 +55,58 @@ def test_analytics_habits_shows_table(session: Session, active_profile: Profile)
     assert 'DAILY' in result.stdout
     assert 'WEEKLY' in result.stdout
     assert 'Active' in result.stdout
-    assert 'Archived' in result.stdout
+
+
+def test_analytics_habits_excludes_archived_by_default(
+    session: Session, active_profile: Profile
+):
+    """Analytics habit listing omits archived habits unless explicitly requested."""
+    habit1 = Habit(
+        profile_id=active_profile.id,
+        name='Exercise',
+        periodicity=Periodicity.DAILY,
+        is_active=True,
+    )
+    habit2 = Habit(
+        profile_id=active_profile.id,
+        name='Old Reading',
+        periodicity=Periodicity.WEEKLY,
+        is_active=False,
+    )
+    session.add_all([habit1, habit2])
+    session.commit()
+
+    result = runner.invoke(cli, ['habits'])
+    assert result.exit_code == 0
+    assert 'Exercise' in result.stdout
+    assert 'Old Reading' not in result.stdout
+    assert 'archived history' not in result.stdout.lower()
+
+
+def test_analytics_habits_include_archived_is_labelled(
+    session: Session, active_profile: Profile
+):
+    """Including archived habits in analytics is explicit and labelled."""
+    habit1 = Habit(
+        profile_id=active_profile.id,
+        name='Exercise',
+        periodicity=Periodicity.DAILY,
+        is_active=True,
+    )
+    habit2 = Habit(
+        profile_id=active_profile.id,
+        name='Old Reading',
+        periodicity=Periodicity.WEEKLY,
+        is_active=False,
+    )
+    session.add_all([habit1, habit2])
+    session.commit()
+
+    result = runner.invoke(cli, ['habits', '--include-archived'])
+    assert result.exit_code == 0
+    assert 'Exercise' in result.stdout
+    assert 'Old Reading' in result.stdout
+    assert 'archived history' in result.stdout.lower()
 
 
 def test_analytics_habits_periodicity_filter(session: Session, active_profile: Profile):
@@ -288,3 +339,146 @@ def test_analytics_longest_with_no_completions_shows_message(
         or 'No completions recorded' in result.stdout
     )
     assert 'Exercise' in result.stdout
+
+
+def test_analytics_longest_excludes_archived_by_default(
+    session: Session, active_profile: Profile
+):
+    """Overall longest streak ignores archived habits unless explicitly included."""
+    active_habit = Habit(
+        profile_id=active_profile.id,
+        name='Active Habit',
+        periodicity=Periodicity.DAILY,
+        is_active=True,
+    )
+    archived_habit = Habit(
+        profile_id=active_profile.id,
+        name='Archived Habit',
+        periodicity=Periodicity.DAILY,
+        is_active=False,
+    )
+    session.add_all([active_habit, archived_habit])
+    session.commit()
+
+    session.add_all(
+        [
+            Completion(
+                habit_id=active_habit.id,
+                completed_at=datetime(2025, 1, 1),
+                period_key='2025-01-01',
+            ),
+            Completion(
+                habit_id=archived_habit.id,
+                completed_at=datetime(2025, 1, 1),
+                period_key='2025-01-01',
+            ),
+            Completion(
+                habit_id=archived_habit.id,
+                completed_at=datetime(2025, 1, 2),
+                period_key='2025-01-02',
+            ),
+            Completion(
+                habit_id=archived_habit.id,
+                completed_at=datetime(2025, 1, 3),
+                period_key='2025-01-03',
+            ),
+        ]
+    )
+    session.commit()
+
+    result = runner.invoke(cli, ['longest'])
+    assert result.exit_code == 0
+    assert 'Active Habit' in result.stdout
+    assert 'Archived Habit' not in result.stdout
+    assert 'archived history' not in result.stdout.lower()
+
+
+def test_analytics_longest_include_archived_is_labelled(
+    session: Session, active_profile: Profile
+):
+    """Including archived history in longest-streak analytics is labelled."""
+    active_habit = Habit(
+        profile_id=active_profile.id,
+        name='Active Habit',
+        periodicity=Periodicity.DAILY,
+        is_active=True,
+    )
+    archived_habit = Habit(
+        profile_id=active_profile.id,
+        name='Archived Habit',
+        periodicity=Periodicity.DAILY,
+        is_active=False,
+    )
+    session.add_all([active_habit, archived_habit])
+    session.commit()
+
+    session.add_all(
+        [
+            Completion(
+                habit_id=active_habit.id,
+                completed_at=datetime(2025, 1, 1),
+                period_key='2025-01-01',
+            ),
+            Completion(
+                habit_id=archived_habit.id,
+                completed_at=datetime(2025, 1, 1),
+                period_key='2025-01-01',
+            ),
+            Completion(
+                habit_id=archived_habit.id,
+                completed_at=datetime(2025, 1, 2),
+                period_key='2025-01-02',
+            ),
+            Completion(
+                habit_id=archived_habit.id,
+                completed_at=datetime(2025, 1, 3),
+                period_key='2025-01-03',
+            ),
+        ]
+    )
+    session.commit()
+
+    result = runner.invoke(cli, ['longest', '--include-archived'])
+    assert result.exit_code == 0
+    assert 'Archived Habit' in result.stdout
+    assert '3' in result.stdout
+    assert 'archived history' in result.stdout.lower()
+
+
+def test_analytics_habits_only_archived_points_to_include_flag(
+    session: Session, active_profile: Profile
+):
+    """When only archived habits exist, analytics names the include-archived choice."""
+    session.add(
+        Habit(
+            profile_id=active_profile.id,
+            name='Old Reading',
+            periodicity=Periodicity.WEEKLY,
+            is_active=False,
+        )
+    )
+    session.commit()
+
+    result = runner.invoke(cli, ['habits'])
+    assert result.exit_code == 0
+    assert 'Old Reading' not in result.stdout
+    assert '--include-archived' in result.stdout
+
+
+def test_analytics_longest_archived_habit_requires_include_flag(
+    session: Session, active_profile: Profile
+):
+    """Looking up an archived habit without --include-archived labels the choice."""
+    archived_habit = Habit(
+        profile_id=active_profile.id,
+        name='Old Reading',
+        periodicity=Periodicity.DAILY,
+        is_active=False,
+    )
+    session.add(archived_habit)
+    session.commit()
+
+    result = runner.invoke(cli, ['longest', '--habit', 'Old Reading'])
+    assert result.exit_code == 1
+    assert 'archived' in result.stdout.lower()
+    assert '--include-archived' in result.stdout

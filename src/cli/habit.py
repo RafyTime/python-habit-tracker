@@ -285,6 +285,69 @@ def archive(
 
         archived_habit = service.archive_habit(habit_id)
         print(f"[green]Habit '{archived_habit.name}' archived.[/green]")
+        print('[dim]Completion history and XP are retained.[/dim]')
+
+    except HabitNotFound:
+        print('[red]Habit not found.[/red]')
+        raise Exit(1)
+
+
+@cli.command()
+def delete(
+    ctx: Context,
+    habit_id: Annotated[
+        int | None, Argument(help='The ID of the habit to permanently delete')
+    ] = None,
+    force: Annotated[
+        bool, Option('--force', '-f', help='Permanently delete without confirmation')
+    ] = False,
+):
+    """Permanently delete a habit and its completion history and XP."""
+    service: HabitService = ctx.obj.habit_service
+
+    try:
+        if not habit_id:
+            habits = service.list_habits(active_only=False)
+            if not habits:
+                print('[yellow]No habits found.[/yellow]')
+                raise Exit(1)
+
+            choices = []
+            for h in habits:
+                status = 'archived' if not h.is_active else h.periodicity.value
+                display_name = f'{h.name} ({status})'
+                choices.append(questionary.Choice(title=display_name, value=h.id))
+
+            habit_id = questionary.select(
+                'Select habit to permanently delete:',
+                choices=choices,
+            ).ask()
+
+            if not habit_id:
+                raise Exit()
+
+        all_habits = service.list_habits(active_only=False)
+        habit = next((h for h in all_habits if h.id == habit_id), None)
+        if not habit:
+            print(f'[red]Habit {habit_id} not found.[/red]')
+            raise Exit(1)
+
+        if not force:
+            warning = (
+                f"Permanently delete habit '{habit.name}'? "
+                'This removes its completion history and XP. '
+                'Remaining XP totals and historical analytics will change. '
+                'This cannot be undone.'
+            )
+            if not Confirm.ask(warning):
+                print('[yellow]Operation cancelled.[/yellow]')
+                return
+
+        deleted_name = service.delete_habit(habit_id)
+        print(
+            f"[green]Habit '{deleted_name}' and its completion history and XP "
+            'were permanently deleted.[/green]'
+        )
 
     except HabitNotFound:
         print('[red]Habit not found.[/red]')
