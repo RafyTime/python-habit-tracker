@@ -30,6 +30,7 @@ def mock_get_session(session: Session):
         patch('src.cli.xp.get_session', side_effect=lambda: iter([session])),
         patch('src.cli.overview.get_session', side_effect=lambda: iter([session])),
         patch('src.cli.analytics.get_session', side_effect=lambda: iter([session])),
+        patch('src.cli.seed.get_session', side_effect=lambda: iter([session])),
     ):
         yield
 

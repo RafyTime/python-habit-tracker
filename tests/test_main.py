@@ -19,6 +19,7 @@ def test_app_help():
     assert 'habit' in result.stdout
     assert 'xp' in result.stdout
     assert 'overview' in result.stdout
+    assert 'seed' in result.stdout
     assert 'Manage user profiles' not in result.stdout
     assert 'profile create' not in result.stdout
     assert 'profile switch' not in result.stdout

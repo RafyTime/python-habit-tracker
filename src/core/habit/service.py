@@ -85,13 +85,19 @@ class HabitService:
         """
         return ProfileService(lambda: iter([session])).ensure_single_profile()
 
-    def create_habit(self, name: str, periodicity: Periodicity) -> Habit:
+    def create_habit(
+        self,
+        name: str,
+        periodicity: Periodicity,
+        created_at: datetime | None = None,
+    ) -> Habit:
         """
         Create a new habit for the active profile.
 
         Args:
             name: The name of the habit (will be normalized by trimming).
             periodicity: The periodicity type (DAILY or WEEKLY).
+            created_at: Optional creation timestamp. Defaults to now.
 
         Returns:
             The created Habit instance.
@@ -118,11 +124,11 @@ class HabitService:
         if existing:
             raise HabitAlreadyExists(normalized_name)
 
-        # Create habit
         habit = Habit(
             profile_id=profile_id,
             name=normalized_name,
             periodicity=periodicity,
+            created_at=created_at if created_at is not None else datetime.now(),
         )
         session.add(habit)
         session.commit()
