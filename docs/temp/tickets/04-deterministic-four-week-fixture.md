@@ -4,11 +4,11 @@
 
 **Blocked by:** 02 — Replace profile selection with an automatic single profile.
 
-**Status:** ready
+**Status:** done
 
-- [ ] Seeding creates exactly the required predefined habits for the single profile, including daily and weekly habits.
-- [ ] Every predefined habit has completion history spanning four weeks and a creation date that precedes its first completion.
-- [ ] The dataset visibly demonstrates a long streak, a broken streak, weekly periodicity, and calendar-week edge cases.
-- [ ] A supplied reference time makes the fixture deterministic and repeatable; repeat seeding is idempotent.
-- [ ] XP events, milestone behaviour retained by the scope, and analytics results are consistent with the stored fixture records.
-- [ ] Automated tests validate the complete seeded outcome rather than only individual insertions.
+- [x] Seeding creates exactly the required predefined habits for the single profile, including daily and weekly habits.
+- [x] Every predefined habit has completion history spanning four weeks and a creation date that precedes its first completion.
+- [x] The dataset visibly demonstrates a long streak, a broken streak, weekly periodicity, and calendar-week edge cases.
+- [x] A supplied reference time makes the fixture deterministic and repeatable; repeat seeding is idempotent.
+- [x] XP events, milestone behaviour retained by the scope, and analytics results are consistent with the stored fixture records.
+- [x] Automated tests validate the complete seeded outcome rather than only individual insertions.

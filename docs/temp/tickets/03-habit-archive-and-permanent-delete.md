@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — Replace profile selection with an automatic single profile.
 
-**Status:** dones
+**Status:** done
 
 - [x] Archiving removes a habit from active lists and due prompts while retaining completion records and XP events.
 - [x] Permanent deletion requires confirmation unless explicitly forced and plainly states that completion history, XP, and historical analytics will change.
