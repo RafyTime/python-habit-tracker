@@ -1,11 +1,21 @@
 from sqlmodel import Session, select
 from typer.testing import CliRunner
 
+from main import app
 from src.cli.settings import cli
 from src.core.models import Profile
 from src.core.profile import ProfileService
 
 runner = CliRunner()
+
+
+def test_settings_without_subcommand_shows_profile(session: Session):
+    """cli settings with no subcommand shows the profile instead of crashing."""
+    ProfileService(lambda: iter([session])).ensure_single_profile()
+
+    result = runner.invoke(app, ['settings'])
+    assert result.exit_code == 0, result.output
+    assert 'User' in result.stdout
 
 
 def test_settings_show_display_name(session: Session):

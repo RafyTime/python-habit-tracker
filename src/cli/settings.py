@@ -23,7 +23,9 @@ def settings_callback(ctx: Context) -> None:
     """Initialize settings service; show settings when no subcommand is given."""
     ctx.obj = SettingsCLIContext()
     if ctx.invoked_subcommand is None:
-        ctx.invoke(show)
+        # Typer leaves `show` as a function, not a Click Command, so
+        # ctx.invoke(show) would call it without injecting context.
+        show(ctx)
 
 
 @cli.command()
