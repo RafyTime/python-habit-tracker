@@ -248,3 +248,38 @@ def test_seed_xp_and_analytics_match_the_stored_fixture(session: Session):
     gym_streak = runner.invoke(analytics_cli, ['longest', '--habit', 'Gym Session'])
     assert gym_streak.exit_code == 0
     assert '4 weeks' in gym_streak.stdout
+
+
+def test_seed_completes_against_a_pooled_sqlite_engine(tmp_path, monkeypatch):
+    """Seed must finish on a real connection pool, not only a reused test session."""
+    from collections.abc import Generator as SessionGenerator
+
+    from sqlalchemy.pool import QueuePool
+    from sqlmodel import SQLModel, create_engine
+
+    engine = create_engine(
+        f'sqlite:///{tmp_path / "seed.db"}',
+        poolclass=QueuePool,
+        pool_size=5,
+        max_overflow=10,
+        pool_timeout=1,
+    )
+    SQLModel.metadata.create_all(engine)
+
+    def pooled_get_session() -> SessionGenerator[Session]:
+        with Session(engine) as session:
+            yield session
+
+    monkeypatch.setattr('src.cli.seed.get_session', pooled_get_session)
+    result = runner.invoke(seed_app, ['--at', '2026-08-18T12:00:00'])
+    assert result.exit_code == 0, result.output
+
+    with Session(engine) as session:
+        names = list(session.exec(select(Habit.name)))
+    assert sorted(names) == [
+        'Clean Apartment',
+        'Code Practice',
+        'Gym Session',
+        'Morning Hydration',
+        'Read 10 Pages',
+    ]
