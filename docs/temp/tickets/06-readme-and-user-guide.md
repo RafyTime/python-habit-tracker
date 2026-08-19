@@ -7,6 +7,7 @@
 **Status:** ready
 
 - [ ] The README contains a concise, verified quick start covering installation, first run, fixture seeding, core commands, tests, and quality checks.
-- [ ] A fuller user guide explains setup, creating and completing daily/weekly habits, due habits, archive versus permanent delete, overview/XP, analytics, fixture data, and common errors.
+- [ ] `docs/USER_GUIDE.md` explains setup, adding and completing daily/weekly habits, icons and editing, due habits, archive/restore/permanent-delete behavior, today/XP, stats, fixture data, and common errors.
+- [ ] Quick start prints the visible GitHub URL for `docs/USER_GUIDE.md`, and the URL is verified after the guide is added.
 - [ ] Examples use the final command names and are verified against an isolated database.
 - [ ] Documentation explains the local-time period rule and clearly labels deferred features rather than promising unsupported behaviour.
