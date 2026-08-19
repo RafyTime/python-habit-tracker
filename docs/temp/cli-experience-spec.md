@@ -137,3 +137,4 @@ Keep explicit commands for every core action. Add optional habit icons, globally
 - The visible user guide URL is `https://github.com/RafyTime/python-habit-tracker/blob/main/docs/USER_GUIDE.md`.
 - Richer analytics remain a possible Phase 3 extension. Their eventual command shape should be chosen when those requirements are defined rather than reserved now.
 - The specification deliberately treats the root CLI and pure analytics as the two observable testing seams. New presentation or orchestration helpers should be tested through those seams unless they contain independently meaningful pure logic.
+- Agents working on user-facing CLI layout or copy may consult the optional [CLI output examples](./cli-output-examples.md). The examples illustrate the intended presentation but do not add requirements to this specification.
