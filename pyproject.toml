@@ -23,6 +23,8 @@ dev = [
 ]
 
 [project.scripts]
+habit = "src.main:app"
+habits = "src.main:app"
 app = "src.main:app"
 cli = "src.main:app"
 
