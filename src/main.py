@@ -5,6 +5,7 @@ from typer import Exit, Option, Typer
 
 from src.cli.analytics import cli as analytics_cli
 from src.cli.habit import cli as habit_cli
+from src.cli.home import today as today_command
 from src.cli.overview import cli as overview_cli
 from src.cli.seed import seed as seed_command
 from src.cli.settings import cli as settings_cli
@@ -50,6 +51,7 @@ def main(
     init_db()
 
 
+app.command()(today_command)
 app.command()(seed_command)
 
 
