@@ -564,15 +564,18 @@ def show_habits(
             return
 
         render.heading('Habits')
-        rows = [
-            [
-                render.labelled_habit(habit.name, habit.icon),
-                _repetition_label(habit.periodicity),
-                'Active' if habit.is_active else 'Archived',
-            ]
-            for habit in habits
-        ]
-        render.table(['Name', 'Every', 'Status'], rows)
+        rows = []
+        row_styles: list[str | None] = []
+        for habit in habits:
+            rows.append(
+                [
+                    render.labelled_habit(habit.name, habit.icon),
+                    _repetition_label(habit.periodicity),
+                    'Active' if habit.is_active else 'Archived',
+                ]
+            )
+            row_styles.append('yellow' if not habit.is_active else None)
+        render.table(['Name', 'Every', 'Status'], rows, row_styles=row_styles)
         if archived:
             render.blank()
             render.warning('Includes archived habits.')

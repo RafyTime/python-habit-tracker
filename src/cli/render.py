@@ -12,6 +12,7 @@ from rich.text import Text
 console = Console(highlight=False)
 
 _BAR_WIDTH = 8
+DEFAULT_HABIT_ICON = '◆'
 _buffer: list[RenderableType] | None = None
 
 
@@ -97,10 +98,16 @@ def error(message: str) -> None:
 def labelled_habit(name: str, icon: str | None = None) -> str:
     if icon:
         return f'{icon} {name}'
-    return name
+    # the extra space for default icon to align text with other icons
+    return f'[dim]{DEFAULT_HABIT_ICON}[/dim]  {name}'
 
 
-def table(columns: list[str], rows: list[list[str]]) -> None:
+def table(
+    columns: list[str],
+    rows: list[list[str]],
+    *,
+    row_styles: list[str | None] | None = None,
+) -> None:
     grid = Table(
         box=box.SIMPLE,
         show_header=True,
@@ -110,8 +117,9 @@ def table(columns: list[str], rows: list[list[str]]) -> None:
     )
     for column in columns:
         grid.add_column(column)
-    for row in rows:
-        grid.add_row(*row)
+    styles = row_styles or [None] * len(rows)
+    for row, style in zip(rows, styles, strict=True):
+        grid.add_row(*row, style=style)
     _emit(grid)
 
 

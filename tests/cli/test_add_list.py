@@ -4,6 +4,7 @@ from sqlmodel import Session, select
 from typer.testing import CliRunner
 
 from main import app
+from src.cli import render
 from src.core.models import Habit, Periodicity, Profile
 
 runner = CliRunner()
@@ -88,6 +89,7 @@ def test_explicit_add_stores_no_icon_unless_supplied(
 
     listed = _invoke(['list'])
     assert 'Morning Walk' in listed.stdout
+    assert render.DEFAULT_HABIT_ICON in listed.stdout
 
 
 def test_explicit_add_stores_icon_and_list_keeps_the_name_beside_it(
@@ -104,6 +106,7 @@ def test_explicit_add_stores_icon_and_list_keeps_the_name_beside_it(
     assert listed.exit_code == 0
     assert '📚' in listed.stdout
     assert 'Read 10 Pages' in listed.stdout
+    assert f'{render.DEFAULT_HABIT_ICON} Read 10 Pages' not in listed.stdout
 
 
 def test_interactive_add_can_choose_a_suggested_icon(
