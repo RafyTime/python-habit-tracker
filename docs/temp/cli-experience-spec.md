@@ -83,7 +83,7 @@ Keep explicit commands for every core action. Add optional habit icons, globally
 - Active and archived habits share global normalized-name uniqueness. Attempting to add an archived match recommends restoring it or choosing another name.
 - Failed name lookup may show suggestions, but the application never silently chooses a prefix or fuzzy match.
 - A habit has an optional short, single-line Unicode icon. The application does not attempt to classify whether the value is an emoji.
-- The icon is nullable. The after-action preference defaults to home. Introducing both fields preserves the retained profile, habits, completions, and XP history from the recovery work.
+- The icon is nullable. The after-action preference defaults to home. Local SQLite files are disposable: a schema change may delete the file and start again. Do not add migration code to keep old databases.
 - Explicit creation stores no icon unless one is supplied. Interactive creation offers a small suggested set, custom input, and no icon. Seeded habits receive predefined icons.
 - Editing changes only a habit's displayed name and icon. Archived editing requires explicit archived inclusion. A dedicated clear-icon option removes the icon, and it conflicts with supplying a replacement icon in the same call.
 - Archive hides a habit from active and due views while preserving completions and XP. Restore returns the same habit and history to active tracking.
@@ -110,7 +110,6 @@ Keep explicit commands for every core action. Add optional habit icons, globally
 - Mode tests distinguish interactive prompting from non-interactive failure, including bare-command snapshot behavior, missing arguments, cancellation, Ctrl+C, and the after-action preference.
 - Quick start tests cover a personal first habit, one completion, sample data on an empty database, existing data, cancellation, and the visible user guide URL.
 - Name tests cover IDs, capitalization, outer and repeated whitespace, underscores, global active and archived uniqueness, archived restore guidance, edit collisions, and non-guessing lookup failures.
-- Schema-evolution tests cover existing profiles and habits receiving safe defaults without losing completion or XP history.
 - Icon tests cover explicit and interactive creation, custom Unicode values, no icon, seeded defaults, editing, clearing, conflicting options, and rendering the habit name beside the icon.
 - Lifecycle tests cover archive history retention, restoration, archived editing, delete impact preview, confirmed deletion, forced deletion, cancellation, and the records actually removed.
 - Presentation tests assert stable meaning rather than terminal escape sequences or exact decorative styling. Text-only output must still identify statuses, warnings, names, and next actions.
@@ -128,6 +127,7 @@ Keep explicit commands for every core action. Add optional habit icons, globally
 - Completion rates, missed-period reports, monthly trends, charts, and a finalized extended-stats command.
 - Web, REST, desktop GUI, and mobile interfaces.
 - Compatibility aliases for the old executables or nested commands.
+- Migrations or compatibility code for old local SQLite files. Delete the database file and start again after a schema change.
 - Automatic emoji recognition, a large icon catalog, or automatic icon selection from habit names.
 - Rewriting the submitted Phase 1 conception document.
 
@@ -137,4 +137,5 @@ Keep explicit commands for every core action. Add optional habit icons, globally
 - The visible user guide URL is `https://github.com/RafyTime/python-habit-tracker/blob/main/docs/USER_GUIDE.md`.
 - Richer analytics remain a possible Phase 3 extension. Their eventual command shape should be chosen when those requirements are defined rather than reserved now.
 - The specification deliberately treats the root CLI and pure analytics as the two observable testing seams. New presentation or orchestration helpers should be tested through those seams unless they contain independently meaningful pure logic.
+- Don't worry about changes to the schema or migrations. There's no prod, just personal local sqlite. If changes are needed, just delete it or nuke it, no problems.
 - Agents working on user-facing CLI layout or copy may consult the optional [CLI output examples](./cli-output-examples.md). The examples illustrate the intended presentation but do not add requirements to this specification.
