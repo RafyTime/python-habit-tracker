@@ -137,5 +137,5 @@ def list_section(title: str, names: list[str]) -> None:
     for name in names:
         line = Text('  ')
         line.append('○ ', style='cyan')
-        line.append(name)
+        line.append_text(Text.from_markup(name))
         _emit(line)

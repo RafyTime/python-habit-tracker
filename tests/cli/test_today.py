@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 from typer.testing import CliRunner
 
 from main import app
+from src.cli import render
 from src.core.models import Completion, Habit, Periodicity, Profile, XPEvent
 
 runner = CliRunner()
@@ -72,6 +73,36 @@ def test_today_distinguishes_habits_due_today_from_habits_due_this_week(
     assert 'Gym Session' in result.stdout
     assert 'Due today' in result.stdout
     assert 'Due this week' in result.stdout
+
+
+def test_today_shows_habit_icons_beside_names(
+    session: Session, active_profile: Profile
+) -> None:
+    session.add_all(
+        [
+            Habit(
+                profile_id=active_profile.id,
+                name='Read 10 Pages',
+                periodicity=Periodicity.DAILY,
+                icon='📚',
+            ),
+            Habit(
+                profile_id=active_profile.id,
+                name='Gym Session',
+                periodicity=Periodicity.WEEKLY,
+            ),
+        ]
+    )
+    session.commit()
+
+    result = _run_today(session)
+
+    assert result.exit_code == 0
+    assert '📚' in result.stdout
+    assert 'Read 10 Pages' in result.stdout
+    assert 'Gym Session' in result.stdout
+    assert render.DEFAULT_HABIT_ICON in result.stdout
+    assert f'{render.DEFAULT_HABIT_ICON} Read 10 Pages' not in result.stdout
 
 
 def test_today_shows_completed_progress_and_xp(

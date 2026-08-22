@@ -65,8 +65,14 @@ def today() -> None:
             habit for habit in due_habits if habit.periodicity == Periodicity.WEEKLY
         ]
 
-        render.list_section('Due today', [habit.name for habit in due_today])
-        render.list_section('Due this week', [habit.name for habit in due_this_week])
+        render.list_section(
+            'Due today',
+            [render.labelled_habit(habit.name, habit.icon) for habit in due_today],
+        )
+        render.list_section(
+            'Due this week',
+            [render.labelled_habit(habit.name, habit.icon) for habit in due_this_week],
+        )
 
         if not due_habits:
             render.blank()
