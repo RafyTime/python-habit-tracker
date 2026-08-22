@@ -11,7 +11,7 @@
 ## Child tickets
 
 - [x] [05a - Open the new CLI and see today](05a-open-habit-cli-and-see-today.md)
-- [ ] [05b - Add and list recognizable habits](05b-add-and-list-recognizable-habits.md)
+- [x] [05b - Add and list recognizable habits](05b-add-and-list-recognizable-habits.md)
 - [ ] [05c - Complete a habit by name or ID](05c-complete-habit-by-name-or-id.md)
 - [ ] [05d - Edit, archive, and restore habits](05d-edit-archive-and-restore-habits.md)
 - [ ] [05e - Permanently delete with a specific impact warning](05e-delete-with-impact-warning.md)

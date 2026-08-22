@@ -2,7 +2,7 @@
 
 **What to build:** A user can mark an active habit done through the new root CLI by choosing it interactively or addressing it reliably by numeric ID or normalized name, then see restrained XP and streak feedback reflected in today's state.
 
-**Blocked by:** 05b: Add and list recognizable habits.
+**Blocked by:** 05b: Add and list recognizable habits (complete).
 
 **Status:** ready
 
