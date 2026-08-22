@@ -1,3 +1,4 @@
+import sys
 from typing import Annotated
 
 import questionary
@@ -8,16 +9,34 @@ from rich.prompt import Confirm, Prompt
 from rich.table import Table
 from typer import Argument, Context, Exit, Option, Typer
 
+from src.cli import render
 from src.core.db import get_session
 from src.core.habit import (
     HabitAlreadyCompletedForPeriod,
     HabitAlreadyExists,
     HabitArchived,
+    HabitArchivedNameExists,
     HabitNotFound,
     HabitService,
 )
 from src.core.models import Periodicity
 from src.core.xp import XPService
+
+_REPETITION_ALIASES = {
+    'day': Periodicity.DAILY,
+    'daily': Periodicity.DAILY,
+    'week': Periodicity.WEEKLY,
+    'weekly': Periodicity.WEEKLY,
+}
+_CUSTOM_ICON = '__custom__'
+_NO_ICON = '__none__'
+_SUGGESTED_ICONS = (
+    ('📚', 'Reading'),
+    ('💧', 'Water'),
+    ('🏃', 'Movement'),
+    ('🧘', 'Mindfulness'),
+    ('📝', 'Writing'),
+)
 
 cli = Typer()
 console = Console()
@@ -381,3 +400,179 @@ def due(ctx: Context):
 
     console.print(table)
     print('\n[dim]Complete a habit with: [cyan]habit complete[/cyan][/dim]')
+
+
+def _can_prompt() -> bool:
+    return sys.stdin.isatty()
+
+
+def _repetition_label(periodicity: Periodicity) -> str:
+    return 'Daily' if periodicity == Periodicity.DAILY else 'Weekly'
+
+
+def _parse_repetition(value: str) -> Periodicity | None:
+    return _REPETITION_ALIASES.get(value.strip().casefold())
+
+
+def _habit_service() -> HabitService:
+    return HabitService(get_session)
+
+
+def _prompt_icon() -> str | None:
+    choices = [
+        questionary.Choice(title=f'{icon}  {label}', value=icon)
+        for icon, label in _SUGGESTED_ICONS
+    ]
+    choices.append(questionary.Choice(title='Enter a custom icon', value=_CUSTOM_ICON))
+    choices.append(questionary.Choice(title='No icon', value=_NO_ICON))
+
+    selected = questionary.select('Choose an icon:', choices=choices).ask()
+    if selected is None:
+        raise Exit()
+    if selected == _NO_ICON:
+        return None
+    if selected != _CUSTOM_ICON:
+        return selected
+
+    custom = Prompt.ask('Icon').strip()
+    if not custom:
+        return None
+    return custom
+
+
+def _ask_for_another_name() -> str:
+    if not _can_prompt():
+        raise Exit(1)
+    name = Prompt.ask('Choose another name').strip()
+    if not name:
+        render.error('Habit name cannot be empty.')
+        raise Exit(1)
+    return name
+
+
+def add(
+    name: Annotated[str | None, Argument(help='The habit name')] = None,
+    every: Annotated[
+        str | None,
+        Option('--every', '-e', help='How often: day, daily, week, or weekly'),
+    ] = None,
+    icon: Annotated[
+        str | None,
+        Option('--icon', '-i', help='Optional short icon shown beside the name'),
+    ] = None,
+) -> None:
+    """Add a daily or weekly habit."""
+    service = _habit_service()
+    interactive_creation = False
+
+    if not name:
+        if not _can_prompt():
+            render.error('A habit name is required.')
+            render.next_step(
+                'add one with [cyan]habit add "Habit name" --every daily[/cyan].'
+            )
+            raise Exit(1)
+        name = Prompt.ask('Habit name').strip()
+        if not name:
+            render.error('Habit name cannot be empty.')
+            raise Exit(1)
+        interactive_creation = True
+
+    if not every:
+        if not _can_prompt():
+            render.error('Choose how often this habit repeats.')
+            render.next_step(
+                'add it with [cyan]habit add "Habit name" --every daily[/cyan].'
+            )
+            raise Exit(1)
+        every_choice = questionary.select(
+            'How often?',
+            choices=[
+                questionary.Choice(title='Daily', value='daily'),
+                questionary.Choice(title='Weekly', value='weekly'),
+            ],
+        ).ask()
+        if not every_choice:
+            raise Exit()
+        every = every_choice
+        interactive_creation = True
+
+    if icon is None and interactive_creation:
+        icon = _prompt_icon()
+
+    periodicity = _parse_repetition(every)
+    if periodicity is None:
+        render.error(f"Unknown repetition '{every}'. Use day, daily, week, or weekly.")
+        raise Exit(1)
+
+    while True:
+        try:
+            habit = service.create_habit(name, periodicity, icon=icon)
+            break
+        except HabitArchivedNameExists as error:
+            render.error(str(error))
+            name = _ask_for_another_name()
+        except HabitAlreadyExists as error:
+            render.error(f"A habit named '{error.name}' already exists.")
+            if not _can_prompt():
+                render.next_step(
+                    'choose another name, or list habits with [cyan]habit list[/cyan].'
+                )
+                raise Exit(1)
+            name = _ask_for_another_name()
+        except ValueError as error:
+            render.error(str(error))
+            raise Exit(1)
+
+    label = render.labelled_habit(habit.name, habit.icon)
+    with render.view():
+        render.success(f'{label} is set as a {_repetition_label(periodicity)} habit.')
+        render.next_step('see it with [cyan]habit list[/cyan].')
+
+
+def show_habits(
+    archived: Annotated[
+        bool,
+        Option('--archived', '-a', help='Include archived habits'),
+    ] = False,
+    every: Annotated[
+        str | None,
+        Option('--every', '-e', help='Filter by day, daily, week, or weekly'),
+    ] = None,
+) -> None:
+    """List habits."""
+    service = _habit_service()
+
+    periodicity = None
+    if every:
+        periodicity = _parse_repetition(every)
+        if periodicity is None:
+            render.error(
+                f"Unknown repetition '{every}'. Use day, daily, week, or weekly."
+            )
+            raise Exit(1)
+
+    habits = service.list_habits(active_only=not archived, periodicity=periodicity)
+
+    with render.view():
+        if not habits:
+            if archived:
+                render.warning('No habits found.')
+            else:
+                render.warning('No active habits yet.')
+            render.next_step('add one with [cyan]habit add[/cyan].')
+            return
+
+        render.heading('Habits')
+        rows = [
+            [
+                render.labelled_habit(habit.name, habit.icon),
+                _repetition_label(habit.periodicity),
+                'Active' if habit.is_active else 'Archived',
+            ]
+            for habit in habits
+        ]
+        render.table(['Name', 'Every', 'Status'], rows)
+        if archived:
+            render.blank()
+            render.warning('Includes archived habits.')

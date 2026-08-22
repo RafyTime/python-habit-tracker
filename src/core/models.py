@@ -36,6 +36,7 @@ class Habit(SQLModel, table=True):
     periodicity: Periodicity
     created_at: datetime = Field(default_factory=datetime.now)
     is_active: bool = Field(default=True, index=True)
+    icon: str | None = Field(default=None)
 
 
 class Completion(SQLModel, table=True):

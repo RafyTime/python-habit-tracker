@@ -39,6 +39,16 @@ class HabitAlreadyExists(HabitError):
         super().__init__(f"Habit '{name}' already exists for this profile")
 
 
+class HabitArchivedNameExists(HabitError):
+    """Raised when a new habit's name matches an archived habit."""
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+        super().__init__(
+            f"An archived habit named '{name}' still exists. Choose another name."
+        )
+
+
 class HabitArchived(HabitError):
     """Raised when attempting to complete an archived habit."""
 

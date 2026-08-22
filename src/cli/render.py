@@ -90,6 +90,31 @@ def warning(message: str) -> None:
     _emit(Text.from_markup(f'[yellow]{message}[/yellow]'))
 
 
+def error(message: str) -> None:
+    _emit(Text.from_markup(f'[red]{message}[/red]'))
+
+
+def labelled_habit(name: str, icon: str | None = None) -> str:
+    if icon:
+        return f'{icon} {name}'
+    return name
+
+
+def table(columns: list[str], rows: list[list[str]]) -> None:
+    grid = Table(
+        box=box.SIMPLE,
+        show_header=True,
+        header_style='bold',
+        pad_edge=False,
+        expand=False,
+    )
+    for column in columns:
+        grid.add_column(column)
+    for row in rows:
+        grid.add_row(*row)
+    _emit(grid)
+
+
 def next_step(message: str) -> None:
     line = Text('Next: ', style='dim')
     line.append_text(Text.from_markup(message))

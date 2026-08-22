@@ -4,7 +4,9 @@ from rich import print
 from typer import Exit, Option, Typer
 
 from src.cli.analytics import cli as analytics_cli
+from src.cli.habit import add as add_command
 from src.cli.habit import cli as habit_cli
+from src.cli.habit import show_habits as list_command
 from src.cli.home import today as today_command
 from src.cli.overview import cli as overview_cli
 from src.cli.seed import seed as seed_command
@@ -52,6 +54,8 @@ def main(
 
 
 app.command()(today_command)
+app.command()(add_command)
+app.command(name='list')(list_command)
 app.command()(seed_command)
 
 

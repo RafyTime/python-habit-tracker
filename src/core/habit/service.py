@@ -13,8 +13,10 @@ from src.core.habit.errors import (
     HabitAlreadyCompletedForPeriod,
     HabitAlreadyExists,
     HabitArchived,
+    HabitArchivedNameExists,
     HabitNotFound,
 )
+from src.core.habit.names import identity_key
 from src.core.models import (
     Completion,
     Habit,
@@ -27,6 +29,22 @@ from src.core.profile.service import ProfileService
 
 if TYPE_CHECKING:
     from src.core.xp.service import XPService
+
+
+MAX_ICON_LENGTH = 8
+
+
+def _normalize_icon(icon: str | None) -> str | None:
+    if icon is None:
+        return None
+    if '\n' in icon or '\r' in icon:
+        raise ValueError('Habit icon must be a single line')
+    stripped = icon.strip()
+    if not stripped:
+        return None
+    if len(stripped) > MAX_ICON_LENGTH:
+        raise ValueError('Habit icon is too long')
+    return stripped
 
 
 def _compute_period_key(when: datetime, periodicity: Periodicity) -> str:
@@ -90,6 +108,7 @@ class HabitService:
         name: str,
         periodicity: Periodicity,
         created_at: datetime | None = None,
+        icon: str | None = None,
     ) -> Habit:
         """
         Create a new habit for the active profile.
@@ -98,37 +117,42 @@ class HabitService:
             name: The name of the habit (will be normalized by trimming).
             periodicity: The periodicity type (DAILY or WEEKLY).
             created_at: Optional creation timestamp. Defaults to now.
+            icon: Optional short single-line Unicode icon.
 
         Returns:
             The created Habit instance.
 
         Raises:
-            HabitAlreadyExists: If a habit with the same name already exists for the active profile.
+            HabitAlreadyExists: If a habit with the same identity already exists.
+            HabitArchivedNameExists: If an archived habit already uses that identity.
         """
         session = self._get_session()
         profile = self._get_active_profile(session)
         profile_id = require_persisted_id(profile.id, 'Active profile')
 
-        normalized_name = name.strip()
-        if not normalized_name:
+        display_name = name.strip()
+        if not display_name:
             raise ValueError('Habit name cannot be empty')
 
-        # Check for duplicates among active habits
-        statement = select(Habit).where(
-            Habit.profile_id == profile_id,
-            Habit.name == normalized_name,
-            col(Habit.is_active),
-        )
-        existing = session.exec(statement).first()
+        stored_icon = _normalize_icon(icon)
+        name_key = identity_key(display_name)
 
-        if existing:
-            raise HabitAlreadyExists(normalized_name)
+        existing_habits = session.exec(
+            select(Habit).where(Habit.profile_id == profile_id)
+        )
+        for existing in existing_habits:
+            if identity_key(existing.name) != name_key:
+                continue
+            if existing.is_active:
+                raise HabitAlreadyExists(existing.name)
+            raise HabitArchivedNameExists(existing.name)
 
         habit = Habit(
             profile_id=profile_id,
-            name=normalized_name,
+            name=display_name,
             periodicity=periodicity,
             created_at=created_at if created_at is not None else datetime.now(),
+            icon=stored_icon,
         )
         session.add(habit)
         session.commit()

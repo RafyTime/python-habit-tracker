@@ -5,6 +5,7 @@ from src.core.habit.errors import (
     HabitAlreadyCompletedForPeriod,
     HabitAlreadyExists,
     HabitArchived,
+    HabitArchivedNameExists,
     HabitError,
     HabitNotFound,
 )
@@ -16,6 +17,7 @@ __all__ = [
     'ActiveProfileRequired',
     'HabitNotFound',
     'HabitAlreadyExists',
+    'HabitArchivedNameExists',
     'HabitArchived',
     'HabitAlreadyCompletedForPeriod',
 ]
