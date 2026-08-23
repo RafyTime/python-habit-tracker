@@ -548,6 +548,9 @@ def add(
             break
         except HabitArchivedNameExists as error:
             render.error(str(error))
+            render.next_step(
+                'restore it with [cyan]habit restore[/cyan], or choose another name.'
+            )
             name = _ask_for_another_name()
         except HabitAlreadyExists as error:
             render.error(f"A habit named '{error.name}' already exists.")
@@ -674,3 +677,215 @@ def done(
             )
         else:
             render.next_step('see your snapshot with [cyan]habit today[/cyan].')
+
+
+def _choice_label(habit: Habit) -> str:
+    prefix = f'{habit.icon} ' if habit.icon else ''
+    status = '' if habit.is_active else ' — archived'
+    return f'{prefix}{habit.name} ({_repetition_label(habit.periodicity)}){status}'
+
+
+def _choose_habit(habits: list[Habit], prompt: str) -> Habit:
+    selected_id = questionary.select(
+        prompt,
+        choices=[
+            questionary.Choice(title=_choice_label(habit), value=habit.id)
+            for habit in habits
+        ],
+    ).ask()
+    if selected_id is None:
+        raise Exit()
+    return next(habit for habit in habits if habit.id == selected_id)
+
+
+def _resolve_habit(
+    service: HabitService,
+    selector: str | None,
+    *,
+    prompt: str,
+    picker_habits: list[Habit],
+    missing_example: str,
+    empty_message: str,
+    not_found_next_step: str = 'list habits with [cyan]habit list[/cyan].',
+) -> Habit:
+    if selector is None or not selector.strip():
+        if not _can_prompt():
+            render.error('Choose a habit.')
+            render.next_step(missing_example)
+            raise Exit(1)
+        if not picker_habits:
+            render.warning(empty_message)
+            raise Exit(1)
+        return _choose_habit(picker_habits, prompt)
+    try:
+        return service.get_habit(selector)
+    except HabitNotFound:
+        render.error(f"No habit matches '{selector}'.")
+        render.next_step(not_found_next_step)
+        raise Exit(1)
+
+
+def _apply_habit_update(
+    service: HabitService,
+    habit: Habit,
+    *,
+    name: str | None,
+    icon: str | None,
+    clear_icon: bool,
+    include_archived: bool,
+) -> Habit:
+    habit_id = require_persisted_id(habit.id, 'Habit')
+    try:
+        return service.update_habit(
+            habit_id,
+            name=name,
+            icon=icon,
+            clear_icon=clear_icon,
+            include_archived=include_archived,
+        )
+    except HabitArchived:
+        render.error(f"'{habit.name}' is archived.")
+        render.next_step('edit it with [cyan]habit edit NAME --archived[/cyan].')
+        raise Exit(1)
+    except HabitAlreadyExists as error:
+        render.error(f"A habit named '{error.name}' already exists.")
+        raise Exit(1)
+    except HabitArchivedNameExists as error:
+        render.error(str(error))
+        raise Exit(1)
+    except ValueError as error:
+        render.error(str(error))
+        raise Exit(1)
+
+
+def edit(
+    selector: Annotated[str | None, Argument(help='Habit ID or name')] = None,
+    name: Annotated[
+        str | None, Option('--name', '-n', help='New displayed name')
+    ] = None,
+    icon: Annotated[str | None, Option('--icon', '-i', help='Replacement icon')] = None,
+    clear_icon: Annotated[
+        bool, Option('--clear-icon', help='Remove the current icon')
+    ] = False,
+    archived: Annotated[
+        bool,
+        Option('--archived', '-a', help='Allow editing an archived habit'),
+    ] = False,
+) -> None:
+    """Edit a habit's name or icon."""
+    if clear_icon and icon is not None:
+        render.error('Choose either a replacement icon or --clear-icon, not both.')
+        raise Exit(1)
+
+    service = _habit_service()
+    picker_habits = service.list_habits(active_only=not archived)
+    habit = _resolve_habit(
+        service,
+        selector,
+        prompt='Which habit should be edited?',
+        picker_habits=picker_habits,
+        missing_example=(
+            'edit one with [cyan]habit edit NAME --name "New name"[/cyan].'
+        ),
+        empty_message=(
+            'No archived habits found.' if archived else 'No active habits found.'
+        ),
+    )
+    if not habit.is_active and not archived:
+        render.error(f"'{habit.name}' is archived.")
+        render.next_step('edit it with [cyan]habit edit NAME --archived[/cyan].')
+        raise Exit(1)
+
+    if name is None and icon is None and not clear_icon:
+        if not _can_prompt():
+            render.error('Choose a name or icon to change.')
+            render.next_step(
+                'edit with [cyan]habit edit NAME --name "New name"[/cyan].'
+            )
+            raise Exit(1)
+        name = Prompt.ask('New name', default=habit.name).strip()
+        if not name:
+            render.error('Habit name cannot be empty.')
+            raise Exit(1)
+
+    updated = _apply_habit_update(
+        service,
+        habit,
+        name=name,
+        icon=icon,
+        clear_icon=clear_icon,
+        include_archived=archived,
+    )
+    label = render.labelled_habit(updated.name, updated.icon)
+    with render.view():
+        render.success(f'{label} was updated.')
+        render.next_step('see it with [cyan]habit list[/cyan].')
+
+
+def archive_habit(
+    selector: Annotated[str | None, Argument(help='Habit ID or name')] = None,
+    force: Annotated[bool, Option('--force', '-f', help='Skip confirmation')] = False,
+) -> None:
+    """Archive a habit while keeping its history."""
+    service = _habit_service()
+    habit = _resolve_habit(
+        service,
+        selector,
+        prompt='Which habit should be archived?',
+        picker_habits=service.list_habits(active_only=True),
+        missing_example='archive one with [cyan]habit archive NAME_OR_ID[/cyan].',
+        empty_message='No active habits found.',
+    )
+    if not habit.is_active:
+        render.error(f"'{habit.name}' is already archived.")
+        render.next_step('restore it with [cyan]habit restore[/cyan].')
+        raise Exit(1)
+
+    if not force and not Confirm.ask(f"Archive '{habit.name}' and keep its history?"):
+        render.warning('Cancelled.')
+        raise Exit()
+
+    archived = service.archive_habit(require_persisted_id(habit.id, 'Habit'))
+    label = render.labelled_habit(archived.name, archived.icon)
+    with render.view():
+        render.success(f'{label} was archived.')
+        render.note('Completions and XP are kept.')
+        render.next_step('restore it later with [cyan]habit restore[/cyan].')
+
+
+def restore(
+    selector: Annotated[str | None, Argument(help='Habit ID or name')] = None,
+) -> None:
+    """Restore an archived habit to active tracking."""
+    service = _habit_service()
+    archived_habits = [
+        habit for habit in service.list_habits(active_only=False) if not habit.is_active
+    ]
+    habit = _resolve_habit(
+        service,
+        selector,
+        prompt='Which habit should be restored?',
+        picker_habits=archived_habits,
+        missing_example='restore one with [cyan]habit restore NAME_OR_ID[/cyan].',
+        empty_message='No archived habits found.',
+        not_found_next_step=(
+            'list archived habits with [cyan]habit list --archived[/cyan].'
+        ),
+    )
+    if habit.is_active:
+        render.error(f"'{habit.name}' is already active.")
+        raise Exit(1)
+
+    try:
+        restored = service.restore_habit(require_persisted_id(habit.id, 'Habit'))
+    except HabitAlreadyExists as error:
+        render.error(f"A habit named '{error.name}' already exists.")
+        raise Exit(1)
+    except HabitArchivedNameExists as error:
+        render.error(str(error))
+        raise Exit(1)
+
+    label = render.labelled_habit(restored.name, restored.icon)
+    with render.view():
+        render.success(f'{label} is active again.')
+        render.next_step('see it with [cyan]habit list[/cyan].')

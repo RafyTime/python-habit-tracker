@@ -135,17 +135,9 @@ class HabitService:
             raise ValueError('Habit name cannot be empty')
 
         stored_icon = _normalize_icon(icon)
-        name_key = identity_key(display_name)
-
-        existing_habits = session.exec(
-            select(Habit).where(Habit.profile_id == profile_id)
-        )
-        for existing in existing_habits:
-            if identity_key(existing.name) != name_key:
-                continue
-            if existing.is_active:
-                raise HabitAlreadyExists(existing.name)
-            raise HabitArchivedNameExists(existing.name)
+        conflict = self._conflicting_habit(session, profile_id, display_name)
+        if conflict is not None:
+            self._raise_name_conflict(conflict)
 
         habit = Habit(
             profile_id=profile_id,
@@ -214,6 +206,114 @@ class HabitService:
             if identity_key(habit.name) == name_key:
                 return habit
         raise HabitNotFound(name=stripped)
+
+    def _owned_habit(self, session: Session, profile_id: int, habit_id: int) -> Habit:
+        habit = session.get(Habit, habit_id)
+        if not habit or habit.profile_id != profile_id:
+            raise HabitNotFound(habit_id=habit_id)
+        return habit
+
+    def _conflicting_habit(
+        self,
+        session: Session,
+        profile_id: int,
+        name: str,
+        *,
+        exclude_habit_id: int | None = None,
+    ) -> Habit | None:
+        name_key = identity_key(name)
+        for existing in session.exec(
+            select(Habit).where(Habit.profile_id == profile_id)
+        ):
+            if exclude_habit_id is not None and existing.id == exclude_habit_id:
+                continue
+            if identity_key(existing.name) == name_key:
+                return existing
+        return None
+
+    def _raise_name_conflict(self, existing: Habit) -> None:
+        if existing.is_active:
+            raise HabitAlreadyExists(existing.name)
+        raise HabitArchivedNameExists(existing.name)
+
+    def update_habit(
+        self,
+        habit_id: int,
+        *,
+        name: str | None = None,
+        icon: str | None = None,
+        clear_icon: bool = False,
+        include_archived: bool = False,
+    ) -> Habit:
+        """Update a habit's displayed name and/or icon.
+
+        Periodicity is left unchanged so existing completion period keys
+        keep their original daily or weekly meaning.
+        """
+        if clear_icon and icon is not None:
+            raise ValueError(
+                'Choose either a replacement icon or clearing the icon, not both.'
+            )
+
+        session = self._get_session()
+        profile = self._get_active_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Active profile')
+        habit = self._owned_habit(session, profile_id, habit_id)
+
+        if not habit.is_active and not include_archived:
+            raise HabitArchived(habit_id)
+
+        if name is not None:
+            display_name = name.strip()
+            if not display_name:
+                raise ValueError('Habit name cannot be empty')
+            conflict = self._conflicting_habit(
+                session,
+                profile_id,
+                display_name,
+                exclude_habit_id=habit_id,
+            )
+            if conflict is not None:
+                raise HabitAlreadyExists(conflict.name)
+            habit.name = display_name
+
+        if clear_icon:
+            habit.icon = None
+        elif icon is not None:
+            stored_icon = _normalize_icon(icon)
+            if stored_icon is None:
+                raise ValueError('Habit icon cannot be empty')
+            habit.icon = stored_icon
+
+        session.add(habit)
+        session.commit()
+        session.refresh(habit)
+        return habit
+
+    def restore_habit(self, habit_id: int) -> Habit:
+        """Return an archived habit to active tracking without changing history."""
+        session = self._get_session()
+        profile = self._get_active_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Active profile')
+        habit = self._owned_habit(session, profile_id, habit_id)
+
+        if habit.is_active:
+            return habit
+
+        conflict = self._conflicting_habit(
+            session,
+            profile_id,
+            habit.name,
+            exclude_habit_id=habit_id,
+        )
+        if conflict is not None:
+            raise HabitAlreadyExists(conflict.name)
+
+        habit.is_active = True
+        session.add(habit)
+        session.commit()
+        session.refresh(habit)
+        return habit
 
     def streak_for_habit(self, habit: Habit) -> int:
         """Return the longest streak for a habit using the shared analytics rule."""
