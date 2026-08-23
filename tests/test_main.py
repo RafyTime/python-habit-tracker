@@ -37,6 +37,7 @@ def test_app_help():
     assert 'today' in result.stdout
     assert 'add' in result.stdout
     assert 'list' in result.stdout
+    assert 'done' in result.stdout
     assert 'Manage user profiles' not in result.stdout
     assert 'profile create' not in result.stdout
     assert 'profile switch' not in result.stdout

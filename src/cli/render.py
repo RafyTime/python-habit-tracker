@@ -12,7 +12,7 @@ from rich.text import Text
 console = Console(highlight=False)
 
 _BAR_WIDTH = 8
-DEFAULT_HABIT_ICON = '◆'
+DEFAULT_HABIT_ICON = '🔷'
 _buffer: list[RenderableType] | None = None
 
 
@@ -87,6 +87,10 @@ def success(message: str) -> None:
     _emit(Text.from_markup(f'[green]{message}[/green]'))
 
 
+def note(message: str) -> None:
+    _emit(Text.from_markup(f'[dim]{message}[/dim]'))
+
+
 def warning(message: str) -> None:
     _emit(Text.from_markup(f'[yellow]{message}[/yellow]'))
 
@@ -98,8 +102,7 @@ def error(message: str) -> None:
 def labelled_habit(name: str, icon: str | None = None) -> str:
     if icon:
         return f'{icon} {name}'
-    # the extra space for default icon to align text with other icons
-    return f'[dim]{DEFAULT_HABIT_ICON}[/dim]  {name}'
+    return f'[dim]{DEFAULT_HABIT_ICON}[/dim] {name}'
 
 
 def table(

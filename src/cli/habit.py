@@ -19,7 +19,7 @@ from src.core.habit import (
     HabitNotFound,
     HabitService,
 )
-from src.core.models import Periodicity
+from src.core.models import Habit, Periodicity, require_persisted_id
 from src.core.xp import XPService
 
 _REPETITION_ALIASES = {
@@ -418,6 +418,43 @@ def _habit_service() -> HabitService:
     return HabitService(get_session)
 
 
+def _completing_habit_service() -> tuple[HabitService, XPService]:
+    xp_service = XPService(get_session)
+    return HabitService(get_session, xp_service=xp_service), xp_service
+
+
+def _current_period_phrase(periodicity: Periodicity) -> str:
+    return 'today' if periodicity == Periodicity.DAILY else 'this week'
+
+
+def _streak_label(streak: int, periodicity: Periodicity) -> str:
+    unit = 'day' if periodicity == Periodicity.DAILY else 'week'
+    return f'{streak}-{unit} streak'
+
+
+def _picker_label(habit: Habit) -> str:
+    prefix = f'{habit.icon} ' if habit.icon else ''
+    return f'{prefix}{habit.name} ({_current_period_phrase(habit.periodicity)})'
+
+
+def _choose_due_habit(service: HabitService) -> Habit:
+    due_habits = service.get_due_habits()
+    if not due_habits:
+        render.warning('Nothing is due right now.')
+        render.next_step('see your snapshot with [cyan]habit today[/cyan].')
+        raise Exit(1)
+    selected_id = questionary.select(
+        'Which habit is done?',
+        choices=[
+            questionary.Choice(title=_picker_label(habit), value=habit.id)
+            for habit in due_habits
+        ],
+    ).ask()
+    if selected_id is None:
+        raise Exit()
+    return next(habit for habit in due_habits if habit.id == selected_id)
+
+
 def _prompt_icon() -> str | None:
     choices = [
         questionary.Choice(title=f'{icon}  {label}', value=icon)
@@ -579,3 +616,61 @@ def show_habits(
         if archived:
             render.blank()
             render.warning('Includes archived habits.')
+
+
+def done(
+    selector: Annotated[str | None, Argument(help='Habit ID or name')] = None,
+) -> None:
+    """Mark a habit done for the current period."""
+    service, xp_service = _completing_habit_service()
+
+    if selector is None or not selector.strip():
+        if not _can_prompt():
+            render.error('Choose a habit to mark done.')
+            render.next_step('mark one with [cyan]habit done NAME_OR_ID[/cyan].')
+            raise Exit(1)
+        habit = _choose_due_habit(service)
+    else:
+        try:
+            habit = service.get_habit(selector)
+        except HabitNotFound:
+            render.error(f"No habit matches '{selector}'.")
+            render.next_step('list habits with [cyan]habit list[/cyan].')
+            raise Exit(1)
+
+    habit_id = require_persisted_id(habit.id, 'Habit')
+    level_before, _, _ = xp_service.get_level_progress_for_active_profile()
+    try:
+        _, milestone_events = service.complete_habit(habit_id)
+    except HabitArchived:
+        render.error(f"'{habit.name}' is archived and cannot be marked done.")
+        raise Exit(1)
+    except HabitAlreadyCompletedForPeriod:
+        render.error(
+            f"'{habit.name}' is already done for {_current_period_phrase(habit.periodicity)}."
+        )
+        raise Exit(1)
+
+    label = render.labelled_habit(habit.name, habit.icon)
+    period = _current_period_phrase(habit.periodicity)
+    streak = service.streak_for_habit(habit)
+    level_after, _, _ = xp_service.get_level_progress_for_active_profile()
+    due_habits = service.get_due_habits()
+    with render.view():
+        render.success(f'{label} is done for {period}.')
+        render.note(f'+1 XP · {_streak_label(streak, habit.periodicity)}')
+        if milestone_events:
+            bonus = sum(event.amount for event in milestone_events)
+            render.success(
+                f'Milestone: {_streak_label(streak, habit.periodicity)}. +{bonus} XP'
+            )
+        if level_after > level_before:
+            render.success(f'Level up: Level {level_after}.')
+        if due_habits:
+            remaining = len(due_habits)
+            waiting = 'habit is' if remaining == 1 else 'habits are'
+            render.next_step(
+                f'{remaining} {waiting} still waiting. Run [cyan]habit today[/cyan].'
+            )
+        else:
+            render.next_step('see your snapshot with [cyan]habit today[/cyan].')

@@ -190,6 +190,53 @@ class HabitService:
 
         return list(session.exec(statement.order_by(col(Habit.created_at))).all())
 
+    def get_habit(self, selector: str) -> Habit:
+        """Resolve a habit by numeric ID or exact normalized name.
+
+        Name matching uses the shared identity key: outer whitespace is trimmed,
+        underscores count as spaces, repeated whitespace collapses, and
+        comparison is case-insensitive. Prefix and fuzzy matches are rejected.
+        """
+        session = self._get_session()
+        profile = self._get_active_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Active profile')
+
+        stripped = selector.strip()
+        if stripped.isdigit():
+            habit_id = int(stripped)
+            habit = session.get(Habit, habit_id)
+            if not habit or habit.profile_id != profile_id:
+                raise HabitNotFound(habit_id=habit_id)
+            return habit
+
+        name_key = identity_key(stripped)
+        for habit in session.exec(select(Habit).where(Habit.profile_id == profile_id)):
+            if identity_key(habit.name) == name_key:
+                return habit
+        raise HabitNotFound(name=stripped)
+
+    def streak_for_habit(self, habit: Habit) -> int:
+        """Return the longest streak for a habit using the shared analytics rule."""
+        habit_id = require_persisted_id(habit.id, 'Habit')
+        completions = self.list_completions(habit_ids=[habit_id])
+        return longest_streak_for_habit(
+            HabitDTO(
+                id=habit_id,
+                name=habit.name,
+                periodicity=habit.periodicity,
+                created_at=habit.created_at,
+                is_active=habit.is_active,
+            ),
+            [
+                CompletionDTO(
+                    habit_id=item.habit_id,
+                    completed_at=item.completed_at,
+                    period_key=item.period_key,
+                )
+                for item in completions
+            ],
+        )
+
     def archive_habit(self, habit_id: int) -> Habit:
         """
         Archive a habit by setting is_active=False.
@@ -328,24 +375,7 @@ class HabitService:
             )
             session.commit()
 
-            # Compute streak and award milestone XP for eligible targets
-            completions = self.list_completions(habit_ids=[habit_id])
-            habit_dto = HabitDTO(
-                id=habit_id,
-                name=habit.name,
-                periodicity=habit.periodicity,
-                created_at=habit.created_at,
-                is_active=habit.is_active,
-            )
-            completion_dtos = [
-                CompletionDTO(
-                    habit_id=c.habit_id,
-                    completed_at=c.completed_at,
-                    period_key=c.period_key,
-                )
-                for c in completions
-            ]
-            streak = longest_streak_for_habit(habit_dto, completion_dtos)
+            streak = self.streak_for_habit(habit)
             milestone_events = self._xp_service.award_milestone_xp(
                 session, profile_id, habit_id, streak
             )
