@@ -13,7 +13,7 @@ _Avoid_: Account, user account
 ### Habits and time
 
 **Habit**:
-A named recurring task that a person intends to complete once in each daily or weekly period.
+A named recurring task that a person intends to complete once in each Daily or Weekly period.
 _Avoid_: Task, routine, goal
 
 **Habit name**:
@@ -24,13 +24,18 @@ _Avoid_: Label, title
 An optional short Unicode marker shown beside a habit name. It never replaces the name.
 _Avoid_: Emoji
 
-**Repetition**:
-The cadence that divides time into completion periods. A habit's repetition is either Daily or Weekly and does not change after creation.
-_Avoid_: Periodicity, frequency, schedule
+**Periodicity**:
+The cadence that divides time into completion periods. A habit's periodicity is either Daily or Weekly and does not change after creation.
+_User-facing_: Repetition
+_Avoid_: Frequency, schedule
 
 **Period**:
-The calendar window in which a habit can be completed once. A Daily period is one calendar date, while a Weekly period is one ISO calendar week.
+The local calendar window in which a habit can be completed once. A Daily period is one calendar date, while a Weekly period is one ISO calendar week.
 _Avoid_: Interval, cycle
+
+**Local time**:
+The machine's current system time, which determines the current Daily or Weekly period. Changing the machine timezone may change the current period; the tracker does not promise stable behavior across that change.
+_Avoid_: Profile timezone, configured timezone
 
 **Completion**:
 A record that a habit was done during a period. A habit has at most one completion in each period.
@@ -88,10 +93,16 @@ _Avoid_: Reward record, XP log entry
 A progress tier derived from accumulated XP.
 _Avoid_: Rank
 
-**Stats**:
-A summary of habit counts, completion counts, and longest streaks. Stats include active habits by default and include archived history only through an explicit, labelled choice.
+**Milestone**:
+The first time a habit reaches a seven-period streak, which awards five bonus XP once for that habit. Archiving and restoration retain the claim, while permanent deletion removes it with the habit.
+_Avoid_: Level, recurring bonus
+
+**Analytics**:
+A summary of habit counts, completion counts, and longest streaks. Analytics include active habits by default and include archived history only through an explicit, labelled choice.
+_User-facing_: Stats
 _Avoid_: Report, dashboard
 
-**Sample data**:
+**Test fixture**:
 A deterministic set of five predefined Daily and Weekly habits with four weeks of completion and XP history, intended for exploration and evaluation.
+_User-facing_: Sample data
 _Avoid_: Demo data, seed data

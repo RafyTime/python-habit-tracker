@@ -75,9 +75,9 @@ Keep explicit commands for every core action. Add optional habit icons, globally
 - Interactive actions return to a refreshed home screen by default. The single persisted profile stores an after-action preference with `home` and `exit` values.
 - Missing arguments prompt only in interactive use. Non-interactive omissions return a failed exit and a concrete command example.
 - Cancelling a picker returns to the previous menu. Ctrl+C exits cleanly without an application traceback.
-- User-facing language uses add, done, every, today, and stats. Domain models and services may retain create, completion, periodicity, and other established internal terms.
+- `Periodicity`, `Analytics`, and `Test fixture` are the canonical domain and assignment terms. User-facing language uses `Repetition`, `Stats`, and `Sample data` for those same concepts, alongside add, done, every, and today.
 - The repetition option accepts day, daily, week, and weekly. Output consistently displays Daily or Weekly.
-- Habit repetition is immutable after creation because completion period keys encode the original daily or weekly schedule.
+- A habit's periodicity is immutable after creation because completion period keys encode the original Daily or Weekly meaning. The CLI presents Periodicity as Repetition.
 - Habit selection accepts a numeric ID or an exact normalized name. Normalization trims outer whitespace, treats underscores as spaces, collapses repeated whitespace, and performs case-insensitive comparison.
 - The application preserves the user's original habit spelling for display. Normalization applies only to identity comparison and lookup.
 - Active and archived habits share global normalized-name uniqueness. Attempting to add an archived match recommends restoring it or choosing another name.
@@ -96,8 +96,9 @@ Keep explicit commands for every core action. Add optional habit icons, globally
 - Quick start sets or retains the display name, offers a personal habit or sample data on an empty database, offers one completion for the personal path, opens home, and prints the visible GitHub user guide URL.
 - Quick start never resets existing data and does not offer sample data automatically when habits already exist.
 - Explicit seeding warns before mixing fixture data with existing active or archived habits. Force bypasses confirmation, and fixture creation remains deterministic and idempotent.
+- A habit earns five bonus XP once when it first reaches a seven-period streak. The milestone claim belongs to the habit identity, survives archive and restoration, and is removed by permanent deletion. Reusing a deleted habit name creates a new identity with its own possible claim. Level changes may receive stronger presentation but do not award XP.
 - One shared presentation module owns headings, tables, progress, success, warnings, recoverable errors, confirmations, and contextual next steps.
-- Output uses calm, supportive language. Routine completion feedback stays restrained, while streak and level milestones may use stronger celebration.
+- Output uses calm, supportive language. Routine completion feedback stays restrained, while the seven-period milestone and level changes may use stronger celebration.
 - Icons, semantic symbols, and colors support written labels. The text remains complete without styling.
 - Expected domain failures become actionable user messages with failed exits where the action failed. Unexpected exceptions are not broadly swallowed.
 
@@ -112,6 +113,7 @@ Keep explicit commands for every core action. Add optional habit icons, globally
 - Name tests cover IDs, capitalization, outer and repeated whitespace, underscores, global active and archived uniqueness, archived restore guidance, edit collisions, and non-guessing lookup failures.
 - Icon tests cover explicit and interactive creation, custom Unicode values, no icon, seeded defaults, editing, clearing, conflicting options, and rendering the habit name beside the icon.
 - Lifecycle tests cover archive history retention, restoration, archived editing, delete impact preview, confirmed deletion, forced deletion, cancellation, and the records actually removed.
+- Milestone tests cover the first seven-period streak, the one-time five-XP award, rebuilding the same streak without another award, retention through archive and restoration, removal through permanent deletion, and a new habit identity reusing a deleted name.
 - Presentation tests assert stable meaning rather than terminal escape sequences or exact decorative styling. Text-only output must still identify statuses, warnings, names, and next actions.
 - Stats tests cover empty data, overall counts, per-habit counts, longest streaks, active defaults, and explicitly labelled archived inclusion.
 - Seed tests cover empty and nonempty databases, warning and force behavior, deterministic reference time, idempotence, icons, complete four-week histories, and XP consistency.
@@ -121,9 +123,9 @@ Keep explicit commands for every core action. Add optional habit icons, globally
 
 - Multiple accounts, profile creation, profile switching, authentication, and cloud synchronization.
 - Custom repetition intervals, negative habits, and changing a habit's daily or weekly repetition after creation.
-- Timezone and week-start preferences. Period keys continue to use local calendar dates and ISO weeks.
+- Week-start preferences. Period keys continue to use local calendar dates and ISO weeks unless a later timezone specification changes that contract.
 - Reminders, notifications, scheduled background work, and calendar integrations.
-- XP controls, penalties, or new reward mechanics beyond the retained completion and milestone behavior.
+- XP controls, penalties, or new reward mechanics beyond completion rewards and the retained seven-period milestone.
 - Completion rates, missed-period reports, monthly trends, charts, and a finalized extended-stats command.
 - Web, REST, desktop GUI, and mobile interfaces.
 - Compatibility aliases for the old executables or nested commands.
@@ -135,7 +137,9 @@ Keep explicit commands for every core action. Add optional habit icons, globally
 
 - The success path is `habit` to Quick start to add to done to stats without profile setup or memorized commands.
 - The visible user guide URL is `https://github.com/RafyTime/python-habit-tracker/blob/main/docs/USER_GUIDE.md`.
+- Timezone handling beyond the current local-calendar baseline remains undecided. A later specification may define a user-configured timezone, a system-derived default, or behavior when that timezone changes; this specification neither promises nor forbids that extension.
 - Richer analytics remain a possible Phase 3 extension. Their eventual command shape should be chosen when those requirements are defined rather than reserved now.
 - The specification deliberately treats the root CLI and pure analytics as the two observable testing seams. New presentation or orchestration helpers should be tested through those seams unless they contain independently meaningful pure logic.
-- Don't worry about changes to the schema or migrations. There's no prod, just personal local sqlite. If changes are needed, just delete it or nuke it, no problems.
+- Local SQLite databases are disposable during development. Schema changes may replace the database instead of preserving historical migrations, provided the application code and schema remain aligned. Runtime commands still follow their documented data-safety rules.
 - Agents working on user-facing CLI layout or copy may consult the optional [CLI output examples](./cli-output-examples.md). The examples illustrate the intended presentation but do not add requirements to this specification.
+- Always check CONTEXT.md to make proper use of the stablished domain language.
