@@ -2,7 +2,7 @@
 
 **What to build:** A user can correct a habit's name or icon, pause it without losing history, and later restore the same habit to active tracking through explicit and guided root commands.
 
-**Blocked by:** 05c: Complete a habit by name or ID.
+**Blocked by:** 05c: Complete a habit by name or ID (complete).
 
 **Status:** ready
 
