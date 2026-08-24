@@ -14,7 +14,7 @@
 - [x] [05b - Add and list recognizable habits](05b-add-and-list-recognizable-habits.md)
 - [x] [05c - Complete a habit by name or ID](05c-complete-habit-by-name-or-id.md)
 - [x] [05d - Edit, archive, and restore habits](05d-edit-archive-and-restore-habits.md)
-- [ ] [05e - Permanently delete with a specific impact warning](05e-delete-with-impact-warning.md)
+- [x] [05e - Permanently delete with a specific impact warning](05e-delete-with-impact-warning.md)
 - [ ] [05f - Inspect progress through stats and XP](05f-inspect-progress-stats-and-xp.md)
 - [ ] [05g - Use the essential workflow from interactive home](05g-interactive-home.md)
 - [ ] [05h - Finish Quick start and safe sample-data guidance](05h-quick-start-and-safe-sample-data.md)
