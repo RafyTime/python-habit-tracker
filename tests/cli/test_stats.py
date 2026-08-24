@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 from typer.testing import CliRunner
 
 from main import app
+from src.cli import render
 from src.core.models import Completion, Habit, Profile
 
 runner = CliRunner()
@@ -140,6 +141,8 @@ def test_stats_for_one_habit_shows_repetition_status_completions_and_streak(
     assert 'completion' in output.lower()
     assert 'streak' in output.lower()
     assert 'Gym Session' not in output
+    assert render.DEFAULT_HABIT_ICON in output
+    assert '[dim]' not in output
 
 
 def test_stats_selects_a_habit_by_id(session: Session, active_profile: Profile) -> None:

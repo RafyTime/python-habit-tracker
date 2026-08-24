@@ -50,7 +50,7 @@ def blank() -> None:
 
 
 def heading(text: str) -> None:
-    _emit(Text(text, style='bold'))
+    _emit(Text.from_markup(text, style='bold'))
 
 
 def bar(completed: int, total: int) -> str:
