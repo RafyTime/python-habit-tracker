@@ -1,6 +1,7 @@
 """Habit service for managing habits and completions."""
 
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -32,6 +33,15 @@ if TYPE_CHECKING:
 
 
 MAX_ICON_LENGTH = 8
+
+
+@dataclass(frozen=True)
+class HabitDeleteImpact:
+    """Completion and XP records that a permanent delete will remove."""
+
+    name: str
+    completion_count: int
+    xp_amount: int
 
 
 def _normalize_icon(icon: str | None) -> str | None:
@@ -365,7 +375,33 @@ class HabitService:
 
         return habit
 
-    def delete_habit(self, habit_id: int) -> str:
+    def _delete_impact(
+        self, session: Session, habit: Habit
+    ) -> tuple[HabitDeleteImpact, list[Completion], list[XPEvent]]:
+        habit_id = require_persisted_id(habit.id, 'Habit')
+        completions = list(
+            session.exec(select(Completion).where(Completion.habit_id == habit_id))
+        )
+        xp_events = list(
+            session.exec(select(XPEvent).where(XPEvent.habit_id == habit_id))
+        )
+        impact = HabitDeleteImpact(
+            name=habit.name,
+            completion_count=len(completions),
+            xp_amount=sum(event.amount for event in xp_events),
+        )
+        return impact, completions, xp_events
+
+    def preview_delete(self, habit_id: int) -> HabitDeleteImpact:
+        """Return the completion and XP impact of deleting a habit without changing data."""
+        session = self._get_session()
+        profile = self._get_active_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Active profile')
+        habit = self._owned_habit(session, profile_id, habit_id)
+        impact, _, _ = self._delete_impact(session, habit)
+        return impact
+
+    def delete_habit(self, habit_id: int) -> HabitDeleteImpact:
         """
         Permanently delete a habit and its dependent completion and XP records.
 
@@ -373,7 +409,7 @@ class HabitService:
             habit_id: The ID of the habit to delete.
 
         Returns:
-            The name of the deleted habit.
+            The name, completion count, and XP amount that were removed.
 
         Raises:
             HabitNotFound: If the habit is not found or doesn't belong to the active profile.
@@ -381,22 +417,8 @@ class HabitService:
         session = self._get_session()
         profile = self._get_active_profile(session)
         profile_id = require_persisted_id(profile.id, 'Active profile')
-
-        habit = session.get(Habit, habit_id)
-        if not habit or habit.profile_id != profile_id:
-            raise HabitNotFound(habit_id=habit_id)
-
-        habit_name = habit.name
-
-        """
-        ADR: Here I had a couple options, whether to manually delete the completions and xp events or to use the cascade delete on the database (which was my first thought). Ended up going with manually deleting then as it's more explicit and easier to understand.
-        """
-        xp_events = list(
-            session.exec(select(XPEvent).where(XPEvent.habit_id == habit_id))
-        )
-        completions = list(
-            session.exec(select(Completion).where(Completion.habit_id == habit_id))
-        )
+        habit = self._owned_habit(session, profile_id, habit_id)
+        impact, completions, xp_events = self._delete_impact(session, habit)
 
         try:
             for event in xp_events:
@@ -409,7 +431,7 @@ class HabitService:
             session.rollback()
             raise
 
-        return habit_name
+        return impact
 
     def complete_habit(
         self, habit_id: int, when: datetime | None = None

@@ -455,9 +455,11 @@ def test_delete_habit_removes_habit_and_dependent_history(
     session.add_all([completion_xp, milestone_xp])
     session.commit()
 
-    deleted_name = service.delete_habit(habit.id)
+    deleted = service.delete_habit(habit.id)
 
-    assert deleted_name == 'To Delete'
+    assert deleted.name == 'To Delete'
+    assert deleted.completion_count == 1
+    assert deleted.xp_amount == 6
     assert session.get(Habit, habit.id) is None
     assert session.get(Completion, completion.id) is None
     assert session.get(XPEvent, completion_xp.id) is None

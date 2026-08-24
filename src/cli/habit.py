@@ -362,9 +362,9 @@ def delete(
                 print('[yellow]Operation cancelled.[/yellow]')
                 return
 
-        deleted_name = service.delete_habit(habit_id)
+        deleted = service.delete_habit(habit_id)
         print(
-            f"[green]Habit '{deleted_name}' and its completion history and XP "
+            f"[green]Habit '{deleted.name}' and its completion history and XP "
             'were permanently deleted.[/green]'
         )
 
@@ -889,3 +889,39 @@ def restore(
     with render.view():
         render.success(f'{label} is active again.')
         render.next_step('see it with [cyan]habit list[/cyan].')
+
+
+def delete_habit(
+    selector: Annotated[str | None, Argument(help='Habit ID or name')] = None,
+    force: Annotated[bool, Option('--force', '-f', help='Skip confirmation')] = False,
+) -> None:
+    """Permanently delete a habit and its history."""
+    service = _habit_service()
+    habit = _resolve_habit(
+        service,
+        selector,
+        prompt='Which habit should be permanently deleted?',
+        picker_habits=service.list_habits(active_only=False),
+        missing_example='delete one with [cyan]habit delete NAME_OR_ID[/cyan].',
+        empty_message='No habits found.',
+    )
+    habit_id = require_persisted_id(habit.id, 'Habit')
+    impact = service.preview_delete(habit_id)
+    if not force:
+        warning = (
+            f'Permanently delete "{habit.name}"? This removes '
+            f'{impact.completion_count} completions and {impact.xp_amount} XP. '
+            'Historical stats will change. This cannot be undone. Continue?'
+        )
+        if not Confirm.ask(warning, default=False):
+            render.warning('Cancelled.')
+            raise Exit()
+
+    deleted = service.delete_habit(habit_id)
+    label = render.labelled_habit(habit.name, habit.icon)
+    with render.view():
+        render.success(f'{label} was permanently deleted.')
+        render.note(
+            f'Removed {deleted.completion_count} completions and {deleted.xp_amount} XP.'
+        )
+        render.next_step('see remaining habits with [cyan]habit list[/cyan].')
