@@ -214,6 +214,7 @@ def test_xp_history_shows_recent_events(
     output = result.stdout
     assert 'Read 10 Pages' in output
     assert '+1' in output
+    assert 'History' in output
     assert '2' in output or '1' in output
 
 
@@ -260,4 +261,5 @@ def test_xp_history_on_empty_data_explains_what_to_do_next(session: Session) -> 
     assert result.exit_code == 0
     output = result.stdout.lower()
     assert 'xp' in output
+    assert 'history' in output
     assert 'habit done' in output

@@ -359,6 +359,7 @@ def stats(
         completions = service.list_completions(habit_ids=[habit_id])
         with render.view():
             render.heading(render.labelled_habit(habit.name, habit.icon))
+            render.blank()
             render.stats(
                 [
                     ('Every', _repetition_label(habit.periodicity)),
@@ -367,9 +368,11 @@ def stats(
                     ('Streak', _habit_streak_detail(habit, completions)),
                 ]
             )
-            _label_archived_history(archived)
-            if not completions:
-                render.next_step('mark a habit done with [cyan]habit done[/cyan].')
+            if archived or not completions:
+                render.blank()
+                _label_archived_history(archived)
+                if not completions:
+                    render.next_step('mark a habit done with [cyan]habit done[/cyan].')
         return
 
     all_habits = _all_habit_dtos(service)
@@ -392,6 +395,7 @@ def stats(
         daily = len(filter_habits_by_periodicity(habits, Periodicity.DAILY))
         weekly = len(filter_habits_by_periodicity(habits, Periodicity.WEEKLY))
         render.heading('Stats')
+        render.blank()
         render.stats(
             [
                 ('Daily', _count_label(daily, 'habit')),
@@ -400,6 +404,8 @@ def stats(
                 ('Streak', _overall_streak_detail(habits, completions)),
             ]
         )
-        _label_archived_history(archived)
-        if not completions:
-            render.next_step('mark a habit done with [cyan]habit done[/cyan].')
+        if archived or not completions:
+            render.blank()
+            _label_archived_history(archived)
+            if not completions:
+                render.next_step('mark a habit done with [cyan]habit done[/cyan].')

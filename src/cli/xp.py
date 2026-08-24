@@ -40,7 +40,7 @@ def status(ctx: Context):
         service.get_level_progress_for_active_profile()
     )
 
-    print(f'[bold]Total XP:[/bold] {total_xp}')
+    print(f'[bold]Total Total:[/bold] {total_xp}')
     print(f'[bold]Level:[/bold] {level}')
     print(
         f'[bold]Progress:[/bold] {xp_into_level}/10 XP to next level ({xp_to_next_level} remaining)'
@@ -118,9 +118,10 @@ def show_xp(
     xp_for_level = xp_into_level + xp_to_next_level
     with render.view():
         render.heading('XP')
+        render.blank()
         render.stats(
             [
-                ('XP', str(total_xp)),
+                ('Total', str(total_xp)),
                 ('Level', str(level)),
             ]
         )
@@ -132,6 +133,8 @@ def show_xp(
         )
         if history:
             events = service.list_recent_events_for_active_profile(limit)
+            render.blank()
+            render.heading('History')
             if events:
                 habits = HabitService(get_session).list_habits(active_only=False)
                 names = {habit.id: habit.name for habit in habits}
@@ -146,9 +149,9 @@ def show_xp(
                             habit_name or '—',
                         ]
                     )
-                render.blank()
                 render.table(['When', 'XP', 'Why', 'Habit'], rows)
             else:
                 render.warning('No XP events yet.')
         if total_xp == 0:
+            render.blank()
             render.next_step('mark a habit done with [cyan]habit done[/cyan].')
