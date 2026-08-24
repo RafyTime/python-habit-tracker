@@ -4,6 +4,7 @@ from collections.abc import Callable, Iterator
 from math import floor
 
 from sqlmodel import Session, func, select
+from sqlmodel.sql.expression import desc
 
 from src.core.models import Profile, XPEvent, require_persisted_id
 from src.core.profile.service import ProfileService
@@ -205,3 +206,16 @@ class XPService:
         profile_id = require_persisted_id(profile.id, 'Active profile')
         total_xp = self.get_total_xp(session, profile_id)
         return self.compute_level_progress(total_xp)
+
+    def list_recent_events_for_active_profile(self, limit: int = 10) -> list[XPEvent]:
+        """Return recent XP events for the active profile, newest first."""
+        session = self._get_session()
+        profile = self._get_active_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Active profile')
+        statement = (
+            select(XPEvent)
+            .where(XPEvent.profile_id == profile_id)
+            .order_by(desc(XPEvent.awarded_at), desc(XPEvent.id))
+            .limit(limit)
+        )
+        return list(session.exec(statement))

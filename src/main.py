@@ -4,6 +4,7 @@ from rich import print
 from typer import Exit, Option, Typer
 
 from src.cli.analytics import cli as analytics_cli
+from src.cli.analytics import stats as stats_command
 from src.cli.habit import add as add_command
 from src.cli.habit import archive_habit as archive_command
 from src.cli.habit import cli as habit_cli
@@ -16,7 +17,7 @@ from src.cli.home import today as today_command
 from src.cli.overview import cli as overview_cli
 from src.cli.seed import seed as seed_command
 from src.cli.settings import cli as settings_cli
-from src.cli.xp import cli as xp_cli
+from src.cli.xp import show_xp as xp_command
 from src.core.config import app_settings
 from src.core.db import init_db
 
@@ -29,7 +30,6 @@ app = Typer(
 )
 app.add_typer(habit_cli, name='habit', help='Manage habits')
 app.add_typer(settings_cli, name='settings', help='View and update profile settings')
-app.add_typer(xp_cli, name='xp', help='XP and level progress')
 app.add_typer(overview_cli, name='overview', help='Daily snapshot')
 app.add_typer(analytics_cli, name='analytics', help='Analytics')
 
@@ -66,6 +66,8 @@ app.command()(edit_command)
 app.command(name='archive')(archive_command)
 app.command()(restore_command)
 app.command(name='delete')(delete_command)
+app.command()(stats_command)
+app.command(name='xp')(xp_command)
 app.command()(seed_command)
 
 

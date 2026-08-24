@@ -42,6 +42,7 @@ def test_app_help():
     assert 'archive' in result.stdout
     assert 'restore' in result.stdout
     assert 'delete' in result.stdout
+    assert 'stats' in result.stdout
     assert 'Manage user profiles' not in result.stdout
     assert 'profile create' not in result.stdout
     assert 'profile switch' not in result.stdout
