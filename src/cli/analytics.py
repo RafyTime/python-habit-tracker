@@ -362,10 +362,10 @@ def stats(
             render.blank()
             render.stats(
                 [
-                    ('Every', _repetition_label(habit.periodicity)),
+                    ('Repetition', _repetition_label(habit.periodicity)),
                     ('Status', 'Active' if habit.is_active else 'Archived'),
-                    ('Done', _count_label(len(completions), 'completion')),
-                    ('Streak', _habit_streak_detail(habit, completions)),
+                    ('Completions', _count_label(len(completions), 'completion')),
+                    ('Longest streak', _habit_streak_detail(habit, completions)),
                 ]
             )
             if archived or not completions:
@@ -398,10 +398,10 @@ def stats(
         render.blank()
         render.stats(
             [
-                ('Daily', _count_label(daily, 'habit')),
-                ('Weekly', _count_label(weekly, 'habit')),
-                ('Done', _count_label(len(completions), 'completion')),
-                ('Streak', _overall_streak_detail(habits, completions)),
+                ('Daily habits', _count_label(daily, 'habit')),
+                ('Weekly habits', _count_label(weekly, 'habit')),
+                ('Completions', _count_label(len(completions), 'completion')),
+                ('Longest streak', _overall_streak_detail(habits, completions)),
             ]
         )
         if archived or not completions:

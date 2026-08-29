@@ -39,12 +39,12 @@ def test_stats_shows_active_daily_weekly_and_completion_counts(
 
     assert result.exit_code == 0
     output = result.stdout
-    assert 'Daily' in output
-    assert 'Weekly' in output
+    assert 'Daily habits' in output
+    assert 'Weekly habits' in output
     assert '2' in output
     assert '1' in output
     assert '3' in output
-    assert 'completion' in output.lower()
+    assert 'Completions' in output
 
 
 def test_stats_shows_the_overall_longest_streak(
@@ -86,7 +86,7 @@ def test_stats_shows_the_overall_longest_streak(
     output = result.stdout
     assert 'Read 10 Pages' in output
     assert '3' in output
-    assert 'streak' in output.lower()
+    assert 'Longest streak' in output
 
 
 def test_stats_with_zero_completions_explains_what_to_do_next(
@@ -134,12 +134,13 @@ def test_stats_for_one_habit_shows_repetition_status_completions_and_streak(
     assert result.exit_code == 0
     output = result.stdout
     assert 'Read 10 Pages' in output
+    assert 'Repetition' in output
     assert 'Daily' in output
     assert 'Active' in output
     assert '3' in output
     assert '2' in output
-    assert 'completion' in output.lower()
-    assert 'streak' in output.lower()
+    assert 'Completions' in output
+    assert 'Longest streak' in output
     assert 'Gym Session' not in output
     assert render.DEFAULT_HABIT_ICON in output
     assert '[dim]' not in output
@@ -305,6 +306,7 @@ def test_stats_labels_archived_history_for_one_habit(
     assert result.exit_code == 0
     output = result.stdout
     assert 'Gym Session' in output
+    assert 'Repetition' in output
     assert 'Weekly' in output
     assert 'Archived' in output
     assert '1' in output
