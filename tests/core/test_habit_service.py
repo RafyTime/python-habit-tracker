@@ -1,7 +1,9 @@
+from collections.abc import Iterator
 from datetime import datetime
 
 import pytest
-from sqlmodel import Session, select
+from sqlalchemy.pool import StaticPool
+from sqlmodel import Session, SQLModel, create_engine, select
 
 from src.core.habit import (
     HabitAlreadyCompletedForPeriod,
@@ -10,8 +12,26 @@ from src.core.habit import (
     HabitNotFound,
     HabitService,
 )
-from src.core.models import Completion, Habit, Periodicity, Profile, XPEvent
+from src.core.models import AppState, Completion, Habit, Periodicity, Profile, XPEvent
 from src.core.xp import XPService
+
+
+def _memory_engine():
+    engine = create_engine(
+        'sqlite://',
+        connect_args={'check_same_thread': False},
+        poolclass=StaticPool,
+    )
+    SQLModel.metadata.create_all(engine)
+    return engine
+
+
+def _closing_session_factory(engine):
+    def session_factory() -> Iterator[Session]:
+        with Session(engine) as session:
+            yield session
+
+    return session_factory
 
 
 def test_create_habit_auto_ensures_profile(session: Session):
@@ -411,6 +431,48 @@ def test_complete_habit_at_milestone_awards_milestone_xp(
     assert completion_xp[0].amount == 1
 
     # Milestone XP
+    assert len(milestone_events) == 1
+    assert milestone_events[0].amount == 5
+    assert milestone_events[0].reason == 'MILESTONE_STREAK_3'
+
+
+def test_complete_habit_milestone_amount_readable_after_session_closes() -> None:
+    """Returned milestone XP stays readable after the producing session closes."""
+    engine = _memory_engine()
+    factory = _closing_session_factory(engine)
+    with Session(engine) as session:
+        profile = Profile(username='testuser')
+        session.add(profile)
+        session.commit()
+        session.refresh(profile)
+        session.add(AppState(id=1, active_profile_id=profile.id))
+        habit = Habit(
+            profile_id=profile.id,
+            name='Exercise',
+            periodicity=Periodicity.DAILY,
+        )
+        session.add(habit)
+        session.commit()
+        session.refresh(habit)
+        habit_id = habit.id
+        base = datetime(2025, 3, 1)
+        for offset in range(2):
+            day = base.replace(day=1 + offset)
+            session.add(
+                Completion(
+                    habit_id=habit_id,
+                    completed_at=day,
+                    period_key=day.date().isoformat(),
+                )
+            )
+        session.commit()
+
+    habit_service = HabitService(factory, xp_service=XPService(factory))
+    completion, milestone_events = habit_service.complete_habit(
+        habit_id, when=base.replace(day=3)
+    )
+
+    assert completion.period_key == '2025-03-03'
     assert len(milestone_events) == 1
     assert milestone_events[0].amount == 5
     assert milestone_events[0].reason == 'MILESTONE_STREAK_3'

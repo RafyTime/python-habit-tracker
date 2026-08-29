@@ -1,10 +1,11 @@
 from unittest.mock import patch
 
+import pytest
 from sqlmodel import Session, select
 from typer.testing import CliRunner
 
 from main import app
-from src.core.models import Completion, Habit, Profile, XPEvent
+from src.core.models import AppState, Completion, Habit, Profile, XPEvent
 
 runner = CliRunner()
 
@@ -304,6 +305,74 @@ def test_done_celebrates_a_streak_milestone(
     assert '3-day streak' in result.stdout
     reasons = {event.reason for event in session.exec(select(XPEvent))}
     assert 'MILESTONE_STREAK_3' in reasons
+
+
+def test_done_milestone_feedback_survives_a_closed_session(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    from collections.abc import Generator as SessionGenerator
+    from datetime import datetime as real_datetime
+
+    from sqlalchemy.pool import StaticPool
+    from sqlmodel import SQLModel, create_engine
+
+    from src.core.models import Periodicity
+
+    engine = create_engine(
+        f'sqlite:///{tmp_path / "done.db"}',
+        connect_args={'check_same_thread': False},
+        poolclass=StaticPool,
+    )
+    SQLModel.metadata.create_all(engine)
+
+    def closing_get_session() -> SessionGenerator[Session]:
+        with Session(engine) as session:
+            yield session
+
+    monkeypatch.setattr('src.cli.habit.get_session', closing_get_session)
+
+    with Session(engine) as session:
+        profile = Profile(username='testuser')
+        session.add(profile)
+        session.commit()
+        session.refresh(profile)
+        session.add(AppState(id=1, active_profile_id=profile.id))
+        habit = Habit(
+            profile_id=profile.id,
+            name='Read 10 Pages',
+            periodicity=Periodicity.DAILY,
+        )
+        session.add(habit)
+        session.commit()
+        session.refresh(habit)
+        base = real_datetime(2025, 3, 1)
+        for offset in range(2):
+            day = base.replace(day=1 + offset)
+            session.add(
+                Completion(
+                    habit_id=habit.id,
+                    completed_at=day,
+                    period_key=day.date().isoformat(),
+                )
+            )
+        session.commit()
+
+    when = real_datetime(2025, 3, 3)
+    with patch('src.core.habit.service.datetime') as mock_dt:
+        mock_dt.now.return_value = when
+        mock_dt.side_effect = lambda *args, **kwargs: (
+            real_datetime(*args, **kwargs) if args or kwargs else when
+        )
+        result = _invoke(['done', 'Read 10 Pages'])
+
+    assert result.exception is None, result.exception
+    assert result.exit_code == 0
+    assert 'Milestone' in result.stdout
+    assert '+5 XP' in result.stdout
+    with Session(engine) as session:
+        reasons = {event.reason for event in session.exec(select(XPEvent))}
+    assert 'MILESTONE_STREAK_3' in reasons
+    assert 'HABIT_COMPLETION' in reasons
 
 
 def test_done_celebrates_a_level_up(session: Session, active_profile: Profile) -> None:

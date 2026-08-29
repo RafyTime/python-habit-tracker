@@ -504,6 +504,9 @@ class HabitService:
             if milestone_events:
                 session.commit()
 
+        session.refresh(completion)
+        for event in milestone_events:
+            session.refresh(event)
         return (completion, milestone_events)
 
     def get_due_habits(self, when: datetime | None = None) -> list[Habit]:
