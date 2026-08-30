@@ -401,8 +401,7 @@ def test_today_reflects_a_completion_immediately(
     assert _invoke(['add', 'Gym Session', '--every', 'weekly']).exit_code == 0
     assert _invoke(['done', 'Read 10 Pages']).exit_code == 0
 
-    with patch('src.cli.home.get_session', side_effect=lambda: iter([session])):
-        snapshot = _invoke(['today'])
+    snapshot = _invoke(['today'])
 
     assert snapshot.exit_code == 0
     assert 'Read 10 Pages' not in snapshot.stdout

@@ -1,11 +1,13 @@
 """Home and daily snapshot commands."""
 
 import sys
+from collections.abc import Iterator
 from datetime import datetime
 
 import questionary
 from rich.live import Live
 from rich.panel import Panel
+from sqlmodel import Session
 from typer import Exit
 
 from src.cli import render
@@ -13,7 +15,7 @@ from src.cli.analytics import stats
 from src.cli.habit import add, done, show_habits
 from src.cli.keys import read_key
 from src.cli.settings import edit_settings
-from src.core.db import get_session
+from src.core.db import session_scope
 from src.core.habit import HabitService
 from src.core.models import AfterAction, Periodicity
 from src.core.profile import ProfileService
@@ -87,59 +89,64 @@ def _greeting(display_name: str) -> str:
 
 
 def _emit_snapshot() -> None:
-    profile_service = ProfileService(get_session)
-    habit_service = HabitService(get_session)
-    xp_service = XPService(get_session)
+    with session_scope() as session:
 
-    profile = profile_service.ensure_single_profile()
-    active_habits = habit_service.list_habits(active_only=True)
+        def factory() -> Iterator[Session]:
+            return iter((session,))
 
-    render.heading(_greeting(profile.username))
-    render.blank()
+        profile_service = ProfileService(factory)
+        habit_service = HabitService(factory)
+        xp_service = XPService(factory)
 
-    if not active_habits:
-        render.warning('No habits yet.')
-        render.next_step('add one with [cyan]habit add[/cyan].')
-        return
+        profile = profile_service.ensure_single_profile()
+        active_habits = habit_service.list_habits(active_only=True)
 
-    due_habits = habit_service.get_due_habits()
-    completed_count = len(active_habits) - len(due_habits)
-    level, xp_into_level, xp_to_next_level = (
-        xp_service.get_level_progress_for_active_profile()
-    )
-    render.stats(
-        [
-            (
-                'Today',
-                f'{render.bar(completed_count, len(active_habits))}  '
-                f'{completed_count} of {len(active_habits)} done',
-            ),
-            (
-                f'Level {level}',
-                f'[dim]{xp_into_level}/{xp_into_level + xp_to_next_level} XP[/dim]',
-            ),
-        ]
-    )
-
-    due_today = [
-        habit for habit in due_habits if habit.periodicity == Periodicity.DAILY
-    ]
-    due_this_week = [
-        habit for habit in due_habits if habit.periodicity == Periodicity.WEEKLY
-    ]
-
-    render.list_section(
-        'Due today',
-        [render.labelled_habit(habit.name, habit.icon) for habit in due_today],
-    )
-    render.list_section(
-        'Due this week',
-        [render.labelled_habit(habit.name, habit.icon) for habit in due_this_week],
-    )
-
-    if not due_habits:
+        render.heading(_greeting(profile.username))
         render.blank()
-        render.success('All habits are done for now.')
+
+        if not active_habits:
+            render.warning('No habits yet.')
+            render.next_step('add one with [cyan]habit add[/cyan].')
+            return
+
+        due_habits = habit_service.get_due_habits()
+        completed_count = len(active_habits) - len(due_habits)
+        level, xp_into_level, xp_to_next_level = (
+            xp_service.get_level_progress_for_active_profile()
+        )
+        render.stats(
+            [
+                (
+                    'Today',
+                    f'{render.bar(completed_count, len(active_habits))}  '
+                    f'{completed_count} of {len(active_habits)} done',
+                ),
+                (
+                    f'Level {level}',
+                    f'[dim]{xp_into_level}/{xp_into_level + xp_to_next_level} XP[/dim]',
+                ),
+            ]
+        )
+
+        due_today = [
+            habit for habit in due_habits if habit.periodicity == Periodicity.DAILY
+        ]
+        due_this_week = [
+            habit for habit in due_habits if habit.periodicity == Periodicity.WEEKLY
+        ]
+
+        render.list_section(
+            'Due today',
+            [render.labelled_habit(habit.name, habit.icon) for habit in due_today],
+        )
+        render.list_section(
+            'Due this week',
+            [render.labelled_habit(habit.name, habit.icon) for habit in due_this_week],
+        )
+
+        if not due_habits:
+            render.blank()
+            render.success('All habits are done for now.')
 
 
 def _home_panel(*, flash: tuple[str, str] | None = None, cursor: int = 0) -> Panel:
@@ -175,8 +182,13 @@ def home() -> None:
         raise Exit() from None
 
 
+def _after_action() -> AfterAction:
+    with session_scope() as session:
+        profile = ProfileService(lambda: iter((session,))).ensure_single_profile()
+        return profile.after_action
+
+
 def _run_home() -> None:
-    profile_service = ProfileService(get_session)
     handlers = {
         value: handler
         for value, _label, handler in _HOME_ACTIONS
@@ -205,13 +217,11 @@ def _run_home() -> None:
             if error.exit_code in (0, None):
                 _clear_hosted_action()
                 continue
-            profile = profile_service.ensure_single_profile()
-            if profile.after_action == AfterAction.EXIT:
+            if _after_action() == AfterAction.EXIT:
                 raise
             _clear_hosted_action()
             continue
         flash = render.take_notice()
-        profile = profile_service.ensure_single_profile()
-        if profile.after_action == AfterAction.EXIT:
+        if _after_action() == AfterAction.EXIT:
             return
         _clear_hosted_action()

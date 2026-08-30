@@ -1,4 +1,5 @@
 from collections.abc import Generator, Iterator
+from contextlib import contextmanager
 
 from sqlmodel import Session, create_engine
 
@@ -24,3 +25,16 @@ def init_db() -> None:
 def get_session() -> Generator[Session]:
     with Session(engine) as session:
         yield session
+
+
+@contextmanager
+def session_scope() -> Iterator[Session]:
+    """Yield one session and return its connection to the pool."""
+    gen = get_session()
+    session = next(gen)
+    try:
+        yield session
+    finally:
+        close = getattr(gen, 'close', None)
+        if close is not None:
+            close()

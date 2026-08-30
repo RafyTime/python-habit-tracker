@@ -296,8 +296,7 @@ def test_archive_by_id_removes_the_habit_from_today_and_due_selection(
     assert 'Read 10 Pages' not in listed.stdout
     assert 'Gym Session' in listed.stdout
 
-    with patch('src.cli.home.get_session', side_effect=lambda: iter([session])):
-        snapshot = _invoke(['today'])
+    snapshot = _invoke(['today'])
     assert snapshot.exit_code == 0
     assert 'Read 10 Pages' not in snapshot.stdout
     assert 'Gym Session' in snapshot.stdout
@@ -393,8 +392,7 @@ def test_restore_by_id_puts_the_habit_back_on_today(
     result = _invoke(['restore', str(habit.id)])
 
     assert result.exit_code == 0
-    with patch('src.cli.home.get_session', side_effect=lambda: iter([session])):
-        snapshot = _invoke(['today'])
+    snapshot = _invoke(['today'])
     assert snapshot.exit_code == 0
     assert 'Read 10 Pages' in snapshot.stdout
 

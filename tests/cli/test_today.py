@@ -12,10 +12,7 @@ runner = CliRunner()
 
 
 def _run_today(session: Session):
-    with (
-        patch('main.init_db'),
-        patch('src.cli.home.get_session', side_effect=lambda: iter([session])),
-    ):
+    with patch('main.init_db'):
         return runner.invoke(app, ['today'])
 
 
