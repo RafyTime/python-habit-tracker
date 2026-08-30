@@ -54,11 +54,24 @@ def main(
             callback=version_callback,
         ),
     ] = None,
+    interactive: Annotated[
+        bool,
+        Option(
+            '--interactive',
+            help='Open the interactive home screen',
+        ),
+    ] = False,
 ):
     _ = version
-    init_db()
-    if ctx.invoked_subcommand is None:
+    if ctx.invoked_subcommand is not None:
+        init_db()
+        return
+    if interactive:
+        init_db()
         home()
+        return
+    print(ctx.get_help())
+    raise Exit()
 
 
 app.command()(today_command)

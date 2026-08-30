@@ -25,6 +25,15 @@ def test_habit_executable_is_exposed_without_removing_legacy_entry_points() -> N
     assert scripts['cli'] == 'src.main:app'
 
 
+def test_bare_habit_shows_help_without_opening_home() -> None:
+    result = runner.invoke(app, [])
+
+    assert result.exit_code == 0
+    assert 'Usage' in result.stdout
+    assert 'today' in result.stdout
+    assert '--interactive' in result.stdout
+
+
 def test_app_help():
     """Test that help lists settings and habit commands, not profile account management."""
     result = runner.invoke(app, ['--help'])

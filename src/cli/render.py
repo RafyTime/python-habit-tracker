@@ -14,6 +14,25 @@ console = Console(highlight=False)
 _BAR_WIDTH = 8
 DEFAULT_HABIT_ICON = '🔷'
 _buffer: list[RenderableType] | None = None
+_notice: tuple[str, str] | None = None
+
+
+def _remember(message: str, style: str) -> None:
+    global _notice
+    if _notice is None:
+        _notice = (style, message)
+
+
+def take_notice() -> tuple[str, str] | None:
+    """Return the first success, warning, or error since the last take."""
+    global _notice
+    notice = _notice
+    _notice = None
+    return notice
+
+
+def discard_notice() -> None:
+    take_notice()
 
 
 def _emit(renderable: RenderableType) -> None:
@@ -24,25 +43,36 @@ def _emit(renderable: RenderableType) -> None:
 
 
 @contextmanager
-def view() -> Iterator[None]:
-    """Render nested output inside a quiet padded frame."""
+def collecting() -> Iterator[list[RenderableType]]:
+    """Collect nested output without printing it."""
     global _buffer
     previous = _buffer
-    _buffer = []
+    collected: list[RenderableType] = []
+    _buffer = collected
     try:
-        yield
-        console.print()
-        console.print(
-            Panel(
-                Group(*_buffer),
-                box=box.ROUNDED,
-                padding=(1, 2),
-                border_style='dim',
-            )
-        )
-        console.print()
+        yield collected
     finally:
         _buffer = previous
+
+
+def panel(renderables: list[RenderableType]) -> Panel:
+    content: RenderableType = Group(*renderables) if renderables else Text('')
+    return Panel(
+        content,
+        box=box.ROUNDED,
+        padding=(1, 2),
+        border_style='dim',
+    )
+
+
+@contextmanager
+def view() -> Iterator[None]:
+    """Render nested output inside a quiet padded frame."""
+    with collecting() as parts:
+        yield
+    console.print()
+    console.print(panel(parts))
+    console.print()
 
 
 def blank() -> None:
@@ -84,6 +114,7 @@ def progress(
 
 
 def success(message: str) -> None:
+    _remember(message, 'green')
     _emit(Text.from_markup(f'[green]{message}[/green]'))
 
 
@@ -92,11 +123,18 @@ def note(message: str) -> None:
 
 
 def warning(message: str) -> None:
+    _remember(message, 'yellow')
     _emit(Text.from_markup(f'[yellow]{message}[/yellow]'))
 
 
 def error(message: str) -> None:
+    _remember(message, 'red')
     _emit(Text.from_markup(f'[red]{message}[/red]'))
+
+
+def result(message: str, *, style: str = 'green') -> None:
+    """Show a status line without replacing the last action notice."""
+    _emit(Text.from_markup(f'[{style}]{message}[/{style}]'))
 
 
 def labelled_habit(name: str, icon: str | None = None) -> str:
@@ -141,4 +179,19 @@ def list_section(title: str, names: list[str]) -> None:
         line = Text('  ')
         line.append('○ ', style='cyan')
         line.append_text(Text.from_markup(name))
+        _emit(line)
+
+
+def menu(prompt: str, labels: list[str], *, cursor: int = 0) -> None:
+    """Render an in-card select list. `cursor` marks the current choice."""
+    blank()
+    _emit(Text(prompt))
+    for index, label in enumerate(labels):
+        line = Text()
+        if index == cursor:
+            line.append(' » ', style='cyan bold')
+            line.append(label, style='cyan bold')
+        else:
+            line.append('   ')
+            line.append(label)
         _emit(line)

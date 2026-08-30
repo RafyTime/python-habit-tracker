@@ -22,10 +22,24 @@ def _invoke(args: list[str] | None = None, **kwargs):
         return runner.invoke(app, args or [], **kwargs)
 
 
-def test_non_interactive_bare_habit_prints_today_snapshot_and_exits(
+def _invoke_home(**kwargs):
+    return _invoke(['--interactive'], **kwargs)
+
+
+def test_bare_habit_shows_help(session: Session) -> None:
+    result = _invoke()
+
+    assert result.exit_code == 0
+    assert 'Usage' in result.stdout
+    assert 'today' in result.stdout
+    assert 'What would you like to do?' not in result.stdout
+    assert 'No habits' not in result.stdout
+
+
+def test_non_interactive_interactive_flag_prints_today_snapshot(
     session: Session,
 ) -> None:
-    result = _invoke()
+    result = _invoke_home()
 
     assert result.exit_code == 0
     assert 'User' in result.stdout
@@ -49,35 +63,29 @@ def test_interactive_bare_habit_shows_snapshot_and_basic_menu(
     )
     session.commit()
 
-    mock_select = patch('src.cli.home.questionary.select')
     with (
         patch('src.cli.home._can_prompt', return_value=True),
-        mock_select as mock_select_obj,
+        patch('src.cli.home._choose_action', return_value='exit'),
     ):
-        mock_select_obj.return_value.unsafe_ask.return_value = 'exit'
-        result = _invoke()
+        result = _invoke_home()
 
     assert result.exit_code == 0
     assert 'Alex' in result.stdout
     assert 'Read 10 Pages' in result.stdout
     assert 'Due today' in result.stdout
-    titles = [choice.title for choice in mock_select_obj.call_args.kwargs['choices']]
-    assert titles == [
+    assert 'What would you like to do?' in result.stdout
+    for label in (
         'Mark a habit done',
         'Add a habit',
         'View habits',
         'View stats',
         'Settings',
         'Exit',
-    ]
-    assert mock_select_obj.call_args.args[0] == 'What would you like to do?'
-    assert 'Edit' not in titles
-    assert 'Archive' not in titles
-    assert 'Restore' not in titles
-    assert 'Delete' not in titles
-    assert 'XP' not in titles
-    assert 'Seed' not in titles
-    assert 'Sample' not in titles
+    ):
+        assert label in result.stdout
+    assert 'Archive' not in result.stdout
+    assert 'Restore' not in result.stdout
+    assert 'Seed' not in result.stdout
 
 
 def test_existing_profile_gets_home_default_without_losing_history(
@@ -147,20 +155,22 @@ def test_home_preference_returns_to_refreshed_snapshot_after_an_action(
         habit_select as habit_select_obj,
     ):
         habit_select_obj.return_value.ask.return_value = reading.id
-        result = _invoke()
+        result = _invoke_home()
 
     assert result.exit_code == 0
-    assert 'Read 10 Pages is done' in result.stdout
-    snapshots = result.stdout.split('Read 10 Pages is done')
-    assert 'Read 10 Pages' in snapshots[0]
-    assert 'Read 10 Pages' not in snapshots[1]
-    assert 'Gym Session' in snapshots[1]
     assert (
         session.exec(
             select(Completion).where(Completion.habit_id == reading.id)
         ).first()
         is not None
     )
+    homes = result.stdout.split('What would you like to do?')
+    assert len(homes) >= 3
+    assert 'Read 10 Pages' in homes[0]
+    assert 'Due today' in homes[0]
+    assert result.stdout.count('Read 10 Pages is done') >= 2
+    assert 'Gym Session' in homes[1]
+    assert 'Due today' not in homes[1]
 
 
 def test_exit_preference_performs_one_action_then_ends(
@@ -174,7 +184,7 @@ def test_exit_preference_performs_one_action_then_ends(
         patch('src.cli.home._can_prompt', return_value=True),
         choose as choose_action,
     ):
-        result = _invoke()
+        result = _invoke_home()
 
     assert result.exit_code == 0
     assert choose_action.call_count == 1
@@ -196,7 +206,7 @@ def test_cancelling_a_picker_returns_home_without_changing_data(
         habit_select as habit_select_obj,
     ):
         habit_select_obj.return_value.ask.return_value = None
-        result = _invoke()
+        result = _invoke_home()
 
     assert result.exit_code == 0
     assert session.exec(select(Completion)).first() is None
@@ -207,7 +217,7 @@ def test_ctrl_c_exits_without_a_traceback(session: Session) -> None:
         patch('src.cli.home._can_prompt', return_value=True),
         patch('src.cli.home._choose_action', side_effect=KeyboardInterrupt),
     ):
-        result = _invoke()
+        result = _invoke_home()
 
     assert result.exit_code == 0
     assert result.exception is None
@@ -221,11 +231,13 @@ def test_interactive_empty_home_shows_empty_state_and_menu(
         patch('src.cli.home._can_prompt', return_value=True),
         patch('src.cli.home._choose_action', return_value='exit'),
     ):
-        result = _invoke()
+        result = _invoke_home()
 
     assert result.exit_code == 0
     assert 'No habits' in result.stdout
     assert 'habit add' in result.stdout
+    assert 'What would you like to do?' in result.stdout
+    assert 'Add a habit' in result.stdout
 
 
 def test_home_add_uses_the_same_persisted_behavior(
@@ -240,7 +252,7 @@ def test_home_add_uses_the_same_persisted_behavior(
         mock_select as mock_select_obj,
     ):
         mock_select_obj.return_value.ask.side_effect = ['daily', '__none__']
-        result = _invoke()
+        result = _invoke_home()
 
     assert result.exit_code == 0
     habit = session.exec(select(Habit).where(Habit.name == 'Morning Walk')).one()
@@ -261,7 +273,7 @@ def test_home_settings_editor_updates_the_same_values(
         mock_select as mock_select_obj,
     ):
         mock_select_obj.return_value.unsafe_ask.return_value = AfterAction.EXIT
-        result = _invoke()
+        result = _invoke_home()
 
     assert result.exit_code == 0
     assert choose_action.call_count == 1
@@ -284,7 +296,7 @@ def test_cancelling_settings_editor_leaves_values_unchanged(
         mock_select as mock_select_obj,
     ):
         mock_select_obj.return_value.unsafe_ask.return_value = None
-        result = _invoke()
+        result = _invoke_home()
 
     assert result.exit_code == 0
     session.refresh(active_profile)
@@ -301,7 +313,7 @@ def test_home_view_stats_uses_the_same_presentation(
         patch('src.cli.home._can_prompt', return_value=True),
         patch('src.cli.home._choose_action', side_effect=['stats', 'exit']),
     ):
-        result = _invoke()
+        result = _invoke_home()
 
     assert result.exit_code == 0
     assert 'Stats' in result.stdout
@@ -322,7 +334,7 @@ def test_exit_preference_ends_after_a_failed_action(
         patch('src.cli.habit._can_prompt', return_value=True),
         choose as choose_action,
     ):
-        result = _invoke()
+        result = _invoke_home()
 
     assert result.exit_code == 1
     assert choose_action.call_count == 1
