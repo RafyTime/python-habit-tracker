@@ -1,15 +1,16 @@
 """CLI tests for the evaluation fixture seed command."""
 
 from datetime import date, datetime, timedelta
+from unittest.mock import patch
 
 from sqlmodel import Session, col, select
 from typer import Typer
 from typer.testing import CliRunner
 
+from main import app
 from src.cli.analytics import cli as analytics_cli
 from src.cli.habit import cli as habit_cli
 from src.cli.seed import seed
-from src.cli.xp import cli as xp_cli
 from src.core.models import Completion, Habit, Periodicity, Profile, XPEvent
 
 runner = CliRunner()
@@ -226,10 +227,11 @@ def test_seed_xp_and_analytics_match_the_stored_fixture(session: Session):
     assert 'MILESTONE_STREAK_30' not in {event.reason for event in xp_events}
     assert sum(event.amount for event in xp_events) == 138
 
-    xp_status = runner.invoke(xp_cli, ['status'])
+    with patch('main.init_db'):
+        xp_status = runner.invoke(app, ['xp'])
     assert xp_status.exit_code == 0
-    assert 'Total XP: 138' in xp_status.stdout
-    assert 'Level: 14' in xp_status.stdout
+    assert '138' in xp_status.stdout
+    assert '14' in xp_status.stdout
 
     longest = runner.invoke(analytics_cli, ['longest'])
     assert longest.exit_code == 0

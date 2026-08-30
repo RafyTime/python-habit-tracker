@@ -593,8 +593,8 @@ def test_delete_habit_cli_analytics_and_xp_reflect_remaining_data(
     session: Session, active_profile: Profile
 ):
     """After delete, XP status and analytics longest use only remaining habits."""
+    from main import app
     from src.cli.analytics import cli as analytics_cli
-    from src.cli.xp import cli as xp_cli
 
     kept_habit = Habit(
         profile_id=active_profile.id, name='Keep', periodicity=Periodicity.DAILY
@@ -662,9 +662,11 @@ def test_delete_habit_cli_analytics_and_xp_reflect_remaining_data(
     delete_result = runner.invoke(cli, ['delete', str(deleted_habit.id), '--force'])
     assert delete_result.exit_code == 0
 
-    xp_result = runner.invoke(xp_cli, ['status'])
+    with patch('main.init_db'):
+        xp_result = runner.invoke(app, ['xp'])
     assert xp_result.exit_code == 0
-    assert 'Total XP: 1' in xp_result.stdout
+    assert 'Total' in xp_result.stdout
+    assert '1/10' in xp_result.stdout
 
     analytics_result = runner.invoke(analytics_cli, ['longest'])
     assert analytics_result.exit_code == 0

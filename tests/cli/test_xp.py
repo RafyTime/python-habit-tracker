@@ -16,50 +16,6 @@ def _invoke(args: list[str], **kwargs):
         return runner.invoke(app, args, **kwargs)
 
 
-def test_xp_status_on_fresh_database(session: Session):
-    """Fresh install can show XP status without profile create/switch guidance."""
-    from src.core.profile import ProfileService
-
-    ProfileService(lambda: iter([session])).ensure_single_profile()
-
-    result = runner.invoke(cli, ['status'])
-    assert result.exit_code == 0
-    assert 'Total XP: 0' in result.stdout
-    assert 'profile switch' not in result.stdout
-    assert 'profile create' not in result.stdout
-
-
-def test_xp_status_shows_totals(session: Session, active_profile: Profile):
-    """Test that xp status shows totals/level when active profile exists."""
-    # Add some XP events
-    event1 = XPEvent(profile_id=active_profile.id, amount=1, reason='HABIT_COMPLETION')
-    event2 = XPEvent(profile_id=active_profile.id, amount=1, reason='HABIT_COMPLETION')
-    session.add_all([event1, event2])
-    session.commit()
-
-    result = runner.invoke(cli, ['status'])
-    assert result.exit_code == 0
-    assert 'Total XP: 2' in result.stdout
-    assert 'Level: 1' in result.stdout
-    assert 'Progress:' in result.stdout
-
-
-def test_xp_status_level_2(session: Session, active_profile: Profile):
-    """Test that xp status shows correct level for level 2."""
-    # Add 10 XP events (level 2)
-    events = [
-        XPEvent(profile_id=active_profile.id, amount=1, reason='HABIT_COMPLETION')
-        for _ in range(10)
-    ]
-    session.add_all(events)
-    session.commit()
-
-    result = runner.invoke(cli, ['status'])
-    assert result.exit_code == 0
-    assert 'Total XP: 10' in result.stdout
-    assert 'Level: 2' in result.stdout
-
-
 def test_xp_log_on_fresh_database(session: Session):
     """Fresh install can show XP log without profile create/switch guidance."""
     from src.core.profile import ProfileService
@@ -159,6 +115,8 @@ def test_xp_on_empty_data_shows_zero_progress_and_a_next_step(
     assert '0' in result.stdout
     assert 'level' in output
     assert 'habit add' in output or 'habit done' in output
+    assert 'profile switch' not in output
+    assert 'profile create' not in output
 
 
 def test_xp_shows_total_level_and_progress(
