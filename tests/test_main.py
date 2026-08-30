@@ -1,9 +1,12 @@
+import re
 import tomllib
 from pathlib import Path
 
 from typer.testing import CliRunner
 
 from main import app
+
+_ANSI = re.compile(r'\x1b\[[0-9;]*m')
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 runner = CliRunner()
@@ -27,11 +30,12 @@ def test_habit_executable_is_exposed_without_removing_legacy_entry_points() -> N
 
 def test_bare_habit_shows_help_without_opening_home() -> None:
     result = runner.invoke(app, [])
+    help_text = _ANSI.sub('', result.stdout)
 
     assert result.exit_code == 0
-    assert 'Usage' in result.stdout
-    assert 'today' in result.stdout
-    assert '--interactive' in result.stdout
+    assert 'Usage' in help_text
+    assert 'today' in help_text
+    assert '--interactive' in help_text
 
 
 def test_app_help():
