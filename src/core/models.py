@@ -11,6 +11,13 @@ class Periodicity(StrEnum):
     WEEKLY = 'WEEKLY'
 
 
+class AfterAction(StrEnum):
+    """What interactive home does after a selected action."""
+
+    HOME = 'home'
+    EXIT = 'exit'
+
+
 def require_persisted_id(record_id: int | None, record_name: str) -> int:
     """Return an ORM record ID or fail clearly if the record is not persisted."""
     if record_id is None:
@@ -22,6 +29,7 @@ class Profile(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     username: str = Field(unique=True, index=True)
     created_at: datetime = Field(default_factory=datetime.now)
+    after_action: AfterAction = Field(default=AfterAction.HOME)
 
 
 class AppState(SQLModel, table=True):

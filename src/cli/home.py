@@ -1,13 +1,43 @@
 """Home and daily snapshot commands."""
 
+import sys
 from datetime import datetime
 
+import questionary
+from typer import Exit
+
 from src.cli import render
+from src.cli.analytics import stats
+from src.cli.habit import add, done, show_habits
+from src.cli.settings import edit_settings
 from src.core.db import get_session
 from src.core.habit import HabitService
-from src.core.models import Periodicity
+from src.core.models import AfterAction, Periodicity
 from src.core.profile import ProfileService
 from src.core.xp import XPService
+
+_HOME_ACTIONS = (
+    ('done', 'Mark a habit done', done),
+    ('add', 'Add a habit', add),
+    ('list', 'View habits', show_habits),
+    ('stats', 'View stats', stats),
+    ('settings', 'Settings', edit_settings),
+    ('exit', 'Exit', None),
+)
+
+
+def _can_prompt() -> bool:
+    return sys.stdin.isatty()
+
+
+def _choose_action() -> str | None:
+    return questionary.select(
+        'What would you like to do?',
+        choices=[
+            questionary.Choice(title=label, value=value)
+            for value, label, _handler in _HOME_ACTIONS
+        ],
+    ).unsafe_ask()
 
 
 def _greeting(display_name: str) -> str:
@@ -77,3 +107,45 @@ def today() -> None:
         if not due_habits:
             render.blank()
             render.success('All habits are done for now.')
+
+
+def home() -> None:
+    """Open interactive home, or print the read-only today snapshot."""
+    if not _can_prompt():
+        today()
+        return
+    try:
+        _run_home()
+    except KeyboardInterrupt:
+        raise Exit() from None
+
+
+def _run_home() -> None:
+    profile_service = ProfileService(get_session)
+    handlers = {
+        value: handler
+        for value, _label, handler in _HOME_ACTIONS
+        if handler is not None
+    }
+    while True:
+        today()
+        choice = _choose_action()
+        if choice is None or choice == 'exit':
+            return
+        handler = handlers.get(choice)
+        if handler is None:
+            continue
+        try:
+            handler()
+        except KeyboardInterrupt:
+            raise Exit() from None
+        except Exit as error:
+            if error.exit_code in (0, None):
+                continue
+            profile = profile_service.ensure_single_profile()
+            if profile.after_action == AfterAction.EXIT:
+                raise
+            continue
+        profile = profile_service.ensure_single_profile()
+        if profile.after_action == AfterAction.EXIT:
+            return

@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from rich import print
-from typer import Exit, Option, Typer
+from typer import Context, Exit, Option, Typer
 
 from src.cli.analytics import cli as analytics_cli
 from src.cli.analytics import stats as stats_command
@@ -13,6 +13,7 @@ from src.cli.habit import done as done_command
 from src.cli.habit import edit as edit_command
 from src.cli.habit import restore as restore_command
 from src.cli.habit import show_habits as list_command
+from src.cli.home import home
 from src.cli.home import today as today_command
 from src.cli.overview import cli as overview_cli
 from src.cli.seed import seed as seed_command
@@ -22,7 +23,6 @@ from src.core.config import app_settings
 from src.core.db import init_db
 
 app = Typer(
-    no_args_is_help=True,
     rich_markup_mode='rich',
     suggest_commands=True,
     help=f'{app_settings.PROJECT_NAME} - {app_settings.PROJECT_DESCRIPTION}',
@@ -41,8 +41,9 @@ def version_callback(value: bool) -> bool:
     return value
 
 
-@app.callback()
+@app.callback(invoke_without_command=True)
 def main(
+    ctx: Context,
     version: Annotated[
         bool | None,
         Option(
@@ -56,6 +57,8 @@ def main(
 ):
     _ = version
     init_db()
+    if ctx.invoked_subcommand is None:
+        home()
 
 
 app.command()(today_command)

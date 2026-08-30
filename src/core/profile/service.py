@@ -5,7 +5,7 @@ from collections.abc import Callable, Iterator
 from sqlmodel import Session, select
 from sqlmodel.sql.expression import col
 
-from src.core.models import AppState, Profile
+from src.core.models import AfterAction, AppState, Profile
 from src.core.profile.errors import ProfileAlreadyExists, ProfileNotFound
 
 
@@ -99,6 +99,20 @@ class ProfileService:
             raise RuntimeError('Single profile missing after ensure')
 
         profile.username = normalized
+        session.add(profile)
+        session.commit()
+        session.refresh(profile)
+        return profile
+
+    def update_after_action(self, after_action: AfterAction) -> Profile:
+        """Update the single profile's after-action preference."""
+        session = self._get_session()
+        profile = self.ensure_single_profile()
+        profile = session.get(Profile, profile.id)
+        if profile is None:
+            raise RuntimeError('Single profile missing after ensure')
+
+        profile.after_action = after_action
         session.add(profile)
         session.commit()
         session.refresh(profile)
