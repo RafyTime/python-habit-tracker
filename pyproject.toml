@@ -78,3 +78,6 @@ show_contexts = true
 
 [tool.pytest.ini_options]
 pythonpath = "src"
+
+[tool.ty.environment]
+python-platform = "all"

@@ -65,3 +65,10 @@ def test_unused_fixture_arguments_are_ignored_only_in_tests() -> None:
 
     assert 'ARG001' in lint_config['select']
     assert lint_config['per-file-ignores'] == {'tests/**/*.py': ['ARG001']}
+
+
+def test_type_checker_does_not_assume_the_host_platform() -> None:
+    with (PROJECT_ROOT / 'pyproject.toml').open('rb') as pyproject_file:
+        pyproject = tomllib.load(pyproject_file)
+
+    assert pyproject['tool']['ty']['environment']['python-platform'] == 'all'

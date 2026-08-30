@@ -19,9 +19,9 @@ def _read_key_posix() -> str:
     import tty
 
     fd = sys.stdin.fileno()
-    old = termios.tcgetattr(fd)  # type: ignore
+    old = termios.tcgetattr(fd)
     try:
-        tty.setraw(fd)  # type: ignore
+        tty.setraw(fd)
         ch = sys.stdin.read(1)
         if ch == '\x03':
             raise KeyboardInterrupt
@@ -34,7 +34,7 @@ def _read_key_posix() -> str:
             return 'enter'
         return ch
     finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old)  # type: ignore
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
 
 def _read_key_windows() -> str:
