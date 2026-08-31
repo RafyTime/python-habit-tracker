@@ -132,15 +132,16 @@ def error(message: str) -> None:
     _emit(Text.from_markup(f'[red]{message}[/red]'))
 
 
-def result(message: str, *, style: str = 'green') -> None:
-    """Show a status line without replacing the last action notice."""
-    _emit(Text.from_markup(f'[{style}]{message}[/{style}]'))
-
-
 def labelled_habit(name: str, icon: str | None = None) -> str:
-    if icon:
-        return f'{icon} {name}'
+    visible = visible_icon(icon)
+    if visible:
+        return f'{visible} {name}'
     return f'[dim]{DEFAULT_HABIT_ICON}[/dim] {name}'
+
+
+def visible_icon(icon: str | None) -> str | None:
+    cleaned = (icon or '').replace('\ufffd', '').strip()
+    return cleaned or None
 
 
 def table(

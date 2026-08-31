@@ -433,7 +433,7 @@ def _streak_label(streak: int, periodicity: Periodicity) -> str:
 
 
 def _picker_label(habit: Habit) -> str:
-    prefix = f'{habit.icon} ' if habit.icon else ''
+    prefix = _icon_prefix(habit.icon)
     return f'{prefix}{habit.name} ({_current_period_phrase(habit.periodicity)})'
 
 
@@ -679,8 +679,13 @@ def done(
             render.next_step('see your snapshot with [cyan]habit today[/cyan].')
 
 
+def _icon_prefix(icon: str | None) -> str:
+    visible = render.visible_icon(icon)
+    return f'{visible} ' if visible else ''
+
+
 def _choice_label(habit: Habit) -> str:
-    prefix = f'{habit.icon} ' if habit.icon else ''
+    prefix = _icon_prefix(habit.icon)
     status = '' if habit.is_active else ' — archived'
     return f'{prefix}{habit.name} ({_repetition_label(habit.periodicity)}){status}'
 

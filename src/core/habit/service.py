@@ -52,6 +52,9 @@ def _normalize_icon(icon: str | None) -> str | None:
     stripped = icon.strip()
     if not stripped:
         return None
+    stripped = stripped.replace('\ufffd', '')
+    if not stripped:
+        raise ValueError('Habit icon is not valid')
     if len(stripped) > MAX_ICON_LENGTH:
         raise ValueError('Habit icon is too long')
     return stripped

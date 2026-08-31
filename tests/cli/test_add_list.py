@@ -364,6 +364,16 @@ def test_add_rejects_an_oversized_icon(
     assert session.exec(select(Habit)).first() is None
 
 
+def test_add_rejects_a_replacement_character_icon(
+    session: Session, active_profile: Profile
+) -> None:
+    result = _invoke(['add', 'Eat', '--every', 'daily', '--icon', '\ufffd'])
+
+    assert result.exit_code == 1
+    assert 'not valid' in result.stdout.lower()
+    assert session.exec(select(Habit)).first() is None
+
+
 def test_interactive_add_prompts_for_missing_name_and_repetition(
     session: Session, active_profile: Profile
 ) -> None:

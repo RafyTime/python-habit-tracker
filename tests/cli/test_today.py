@@ -102,6 +102,27 @@ def test_today_shows_habit_icons_beside_names(
     assert f'{render.DEFAULT_HABIT_ICON} Read 10 Pages' not in result.stdout
 
 
+def test_today_skips_a_replacement_character_icon(
+    session: Session, active_profile: Profile
+) -> None:
+    session.add(
+        Habit(
+            profile_id=active_profile.id,
+            name='Eat',
+            periodicity=Periodicity.DAILY,
+            icon='\ufffd',
+        )
+    )
+    session.commit()
+
+    result = _run_today(session)
+
+    assert result.exit_code == 0
+    assert 'Eat' in result.stdout
+    assert '\ufffd' not in result.stdout
+    assert render.DEFAULT_HABIT_ICON in result.stdout
+
+
 def test_today_shows_completed_progress_and_xp(
     session: Session, active_profile: Profile
 ) -> None:

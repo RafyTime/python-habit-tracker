@@ -7,6 +7,20 @@ import select
 import sys
 
 
+def drain_pending_keys() -> None:
+    """Drop buffered keypresses so a leftover Enter cannot skip a later wait."""
+    if not sys.stdin.isatty():
+        return
+    if importlib.util.find_spec('termios') is None:
+        import msvcrt
+
+        while msvcrt.kbhit():
+            msvcrt.getwch()
+        return
+    while select.select([sys.stdin], [], [], 0)[0]:
+        sys.stdin.read(1)
+
+
 def read_key() -> str:
     """Return 'up', 'down', 'enter', 'esc', or a single character."""
     if importlib.util.find_spec('termios') is None:

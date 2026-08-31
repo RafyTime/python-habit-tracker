@@ -168,7 +168,9 @@ def test_home_preference_returns_to_refreshed_snapshot_after_an_action(
     assert len(homes) >= 3
     assert 'Read 10 Pages' in homes[0]
     assert 'Due today' in homes[0]
-    assert result.stdout.count('Read 10 Pages is done') >= 2
+    assert result.stdout.count('Read 10 Pages is done') == 1
+    assert 'Read 10 Pages is done' in homes[1]
+    assert 'Press Enter to return home' in homes[1]
     assert 'Gym Session' in homes[1]
     assert 'Due today' not in homes[1]
 
@@ -190,7 +192,27 @@ def test_exit_preference_performs_one_action_then_ends(
     assert choose_action.call_count == 1
     assert 'Read 10 Pages' in result.stdout
     assert 'Daily' in result.stdout
+    assert 'Press Enter to return home' not in result.stdout
     assert session.exec(select(Completion)).first() is None
+
+
+def test_esc_after_an_action_leaves_interactive_home(
+    session: Session, active_profile: Profile
+) -> None:
+    assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
+
+    choose = patch('src.cli.home._choose_action', side_effect=['list', 'done'])
+    with (
+        patch('src.cli.home._can_prompt', return_value=True),
+        patch('src.cli.home._wait_to_return_home', return_value=False),
+        choose as choose_action,
+    ):
+        result = _invoke_home()
+
+    assert result.exit_code == 0
+    assert choose_action.call_count == 1
+    assert 'Read 10 Pages' in result.stdout
+    assert result.stdout.count('What would you like to do?') == 1
 
 
 def test_cancelling_a_picker_returns_home_without_changing_data(
@@ -210,6 +232,7 @@ def test_cancelling_a_picker_returns_home_without_changing_data(
 
     assert result.exit_code == 0
     assert session.exec(select(Completion)).first() is None
+    assert 'Press Enter to return home' not in result.stdout
 
 
 def test_ctrl_c_exits_without_a_traceback(session: Session) -> None:
@@ -319,6 +342,30 @@ def test_home_view_stats_uses_the_same_presentation(
     assert 'Stats' in result.stdout
     assert 'Daily habits' in result.stdout
     assert '1 habit' in result.stdout
+    assert result.stdout.count('What would you like to do?') >= 2
+    assert result.stdout.index('Stats') < result.stdout.rindex(
+        'What would you like to do?'
+    )
+    assert 'Press Enter to return home' in result.stdout
+
+
+def test_failed_home_action_prompts_before_returning(
+    session: Session, active_profile: Profile
+) -> None:
+    assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
+    assert _invoke(['done', 'Read 10 Pages']).exit_code == 0
+
+    with (
+        patch('src.cli.home._can_prompt', return_value=True),
+        patch('src.cli.habit._can_prompt', return_value=True),
+        patch('src.cli.home._choose_action', side_effect=['done', 'exit']),
+    ):
+        result = _invoke_home()
+
+    assert result.exit_code == 0
+    assert 'due' in result.stdout.lower()
+    assert 'Press Enter to return home' in result.stdout
+    assert result.stdout.count('What would you like to do?') >= 2
 
 
 def test_exit_preference_ends_after_a_failed_action(

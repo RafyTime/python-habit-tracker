@@ -13,7 +13,7 @@ from typer import Exit
 from src.cli import render
 from src.cli.analytics import stats
 from src.cli.habit import add, done, show_habits
-from src.cli.keys import read_key
+from src.cli.keys import drain_pending_keys, read_key
 from src.cli.settings import edit_settings
 from src.core.db import session_scope
 from src.core.habit import HabitService
@@ -49,10 +49,10 @@ def _choose_action() -> str | None:
     ).unsafe_ask()
 
 
-def _live_choose(flash: tuple[str, str] | None) -> str | None:
+def _live_choose() -> str | None:
     cursor = 0
     with Live(
-        _home_panel(flash=flash, cursor=cursor),
+        _home_panel(cursor=cursor),
         console=render.console,
         auto_refresh=False,
         transient=True,
@@ -69,12 +69,7 @@ def _live_choose(flash: tuple[str, str] | None) -> str | None:
                 return None
             else:
                 continue
-            live.update(_home_panel(flash=flash, cursor=cursor), refresh=True)
-
-
-def _clear_hosted_action() -> None:
-    if render.console.is_terminal:
-        render.console.clear()
+            live.update(_home_panel(cursor=cursor), refresh=True)
 
 
 def _greeting(display_name: str) -> str:
@@ -149,12 +144,8 @@ def _emit_snapshot() -> None:
             render.success('All habits are done for now.')
 
 
-def _home_panel(*, flash: tuple[str, str] | None = None, cursor: int = 0) -> Panel:
+def _home_panel(*, cursor: int = 0) -> Panel:
     with render.collecting() as parts:
-        if flash:
-            style, message = flash
-            render.result(message, style=style)
-            render.blank()
         _emit_snapshot()
         render.menu(
             'What would you like to do?',
@@ -188,19 +179,45 @@ def _after_action() -> AfterAction:
         return profile.after_action
 
 
+def _clear_home() -> None:
+    if render.console.is_terminal:
+        render.console.clear()
+
+
+def _wait_to_return_home() -> bool:
+    """True redraws home. False leaves interactive mode."""
+    render.note('Press Enter to return home. Esc to exit.')
+    if not sys.stdin.isatty():
+        return True
+    drain_pending_keys()
+    while True:
+        key = read_key()
+        if key == 'enter':
+            return True
+        if key == 'esc':
+            return False
+
+
+def _pause_and_clear() -> bool:
+    """Wait to return home. True means redraw. False means leave."""
+    if not _wait_to_return_home():
+        return False
+    _clear_home()
+    return True
+
+
 def _run_home() -> None:
     handlers = {
         value: handler
         for value, _label, handler in _HOME_ACTIONS
         if handler is not None
     }
-    flash: tuple[str, str] | None = None
     while True:
         if _supports_live():
-            choice = _live_choose(flash)
+            choice = _live_choose()
         else:
             render.console.print()
-            render.console.print(_home_panel(flash=flash))
+            render.console.print(_home_panel())
             render.console.print()
             choice = _choose_action()
         if choice is None or choice == 'exit':
@@ -213,15 +230,17 @@ def _run_home() -> None:
         except KeyboardInterrupt:
             raise Exit() from None
         except Exit as error:
-            flash = render.take_notice()
+            render.discard_notice()
             if error.exit_code in (0, None):
-                _clear_hosted_action()
+                _clear_home()
                 continue
             if _after_action() == AfterAction.EXIT:
                 raise
-            _clear_hosted_action()
+            if not _pause_and_clear():
+                return
             continue
-        flash = render.take_notice()
+        render.discard_notice()
         if _after_action() == AfterAction.EXIT:
             return
-        _clear_hosted_action()
+        if not _pause_and_clear():
+            return
