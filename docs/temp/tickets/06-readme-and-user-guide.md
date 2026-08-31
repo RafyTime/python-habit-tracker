@@ -8,6 +8,7 @@
 
 - [ ] The README contains a concise, verified quick start covering installation, first run, fixture seeding, core commands, tests, and quality checks.
 - [ ] `docs/USER_GUIDE.md` explains setup, adding and completing daily/weekly habits, icons and editing, due habits, archive/restore/permanent-delete behavior, today/XP, stats, fixture data, and common errors.
+- [ ] The guide notes that `--icon` on the command line can mangle Unicode in some terminals (Git Bash on Windows is a known case); PowerShell and Windows Terminal usually pass it through, and the interactive icon prompt is the reliable way to set an Icon.
 - [ ] Quick start prints the visible GitHub URL for `docs/USER_GUIDE.md`, and the URL is verified after the guide is added.
 - [ ] Examples use the final command names and are verified against an isolated database.
 - [ ] Assignment-facing explanations use the glossary's canonical terms `Periodicity`, `Analytics`, and `Test fixture`; CLI guidance uses the accepted user-facing terms `Repetition`, `Stats`, and `Sample data` and explains their mapping where an evaluator needs it.
