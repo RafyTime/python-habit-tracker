@@ -20,7 +20,7 @@ seed_app.command()(seed)
 
 
 def _invoke_seed(at: datetime = REFERENCE_TIME):
-    result = runner.invoke(seed_app, ['--at', at.isoformat()])
+    result = runner.invoke(seed_app, ['--at', at.isoformat(), '--force'])
     assert result.exit_code == 0, result.output
     return result
 
@@ -29,7 +29,7 @@ def test_seed_creates_five_predefined_habits_for_the_single_profile(session: Ses
     """Seed loads exactly five predefined daily and weekly habits on one profile."""
     result = _invoke_seed()
 
-    assert 'Database seeded successfully' in result.stdout
+    assert 'Sample data is ready' in result.stdout
 
     listed = runner.invoke(habit_cli, ['list'])
     assert listed.exit_code == 0
@@ -273,7 +273,7 @@ def test_seed_completes_against_a_pooled_sqlite_engine(tmp_path, monkeypatch):
             yield session
 
     monkeypatch.setattr('src.cli.seed.get_session', pooled_get_session)
-    result = runner.invoke(seed_app, ['--at', '2026-08-18T12:00:00'])
+    result = runner.invoke(seed_app, ['--at', '2026-08-18T12:00:00', '--force'])
     assert result.exit_code == 0, result.output
 
     with Session(engine) as session:
@@ -285,3 +285,126 @@ def test_seed_completes_against_a_pooled_sqlite_engine(tmp_path, monkeypatch):
         'Morning Hydration',
         'Read 10 Pages',
     ]
+
+
+def _invoke_root(args: list[str], **kwargs):
+    with patch('main.init_db'):
+        return runner.invoke(app, args, **kwargs)
+
+
+def test_root_seed_on_an_empty_database_loads_sample_data(session: Session) -> None:
+    result = _invoke_root(['seed', '--at', REFERENCE_TIME.isoformat()])
+
+    assert result.exit_code == 0, result.output
+    assert 'sample' in result.stdout.casefold()
+    names = sorted(session.exec(select(Habit.name)).all())
+    assert names == [
+        'Clean Apartment',
+        'Code Practice',
+        'Gym Session',
+        'Morning Hydration',
+        'Read 10 Pages',
+    ]
+
+
+def test_root_seed_assigns_predefined_icons(session: Session) -> None:
+    result = _invoke_root(['seed', '--at', REFERENCE_TIME.isoformat(), '--force'])
+
+    assert result.exit_code == 0, result.output
+    icons = {habit.name: habit.icon for habit in session.exec(select(Habit)).all()}
+    assert icons == {
+        'Morning Hydration': '💧',
+        'Gym Session': '🏋',
+        'Read 10 Pages': '📚',
+        'Code Practice': '💻',
+        'Clean Apartment': '🧹',
+    }
+
+
+def test_seed_without_force_fails_when_habits_already_exist(
+    session: Session,
+) -> None:
+    added = _invoke_root(['add', 'Morning Walk', '--every', 'daily'])
+    assert added.exit_code == 0
+
+    result = _invoke_root(['seed', '--at', REFERENCE_TIME.isoformat()])
+
+    assert result.exit_code == 1
+    assert 'sample' in result.stdout.casefold()
+    assert 'habit seed --force' in result.stdout
+    names = [habit.name for habit in session.exec(select(Habit)).all()]
+    assert names == ['Morning Walk']
+
+
+def test_seed_without_force_fails_when_only_archived_habits_exist(
+    session: Session,
+) -> None:
+    added = _invoke_root(['add', 'Morning Walk', '--every', 'daily'])
+    assert added.exit_code == 0
+    archived = _invoke_root(['archive', 'Morning Walk', '--force'])
+    assert archived.exit_code == 0
+
+    result = _invoke_root(['seed', '--at', REFERENCE_TIME.isoformat()])
+
+    assert result.exit_code == 1
+    assert 'habit seed --force' in result.stdout
+    habit = session.exec(select(Habit)).one()
+    assert habit.name == 'Morning Walk'
+    assert habit.is_active is False
+
+
+def test_seed_force_mixes_fixture_habits_without_prompting(
+    session: Session,
+) -> None:
+    added = _invoke_root(['add', 'Morning Walk', '--every', 'daily'])
+    assert added.exit_code == 0
+
+    result = _invoke_root(['seed', '--at', REFERENCE_TIME.isoformat(), '--force'])
+
+    assert result.exit_code == 0, result.output
+    names = {habit.name for habit in session.exec(select(Habit)).all()}
+    assert 'Morning Walk' in names
+    assert {
+        'Clean Apartment',
+        'Code Practice',
+        'Gym Session',
+        'Morning Hydration',
+        'Read 10 Pages',
+    } <= names
+
+
+def test_confirmed_seed_is_deterministic_and_idempotent(session: Session) -> None:
+    added = _invoke_root(['add', 'Morning Walk', '--every', 'daily'])
+    assert added.exit_code == 0
+
+    with (
+        patch('src.cli.seed._can_prompt', return_value=True),
+        patch('src.cli.seed._confirm_existing_data', return_value=True),
+    ):
+        first = _invoke_root(['seed', '--at', REFERENCE_TIME.isoformat()])
+        second = _invoke_root(['seed', '--at', REFERENCE_TIME.isoformat()])
+
+    assert first.exit_code == 0, first.output
+    assert second.exit_code == 0, second.output
+    habits = list(session.exec(select(Habit)))
+    completions = list(session.exec(select(Completion)))
+    names = {habit.name for habit in habits}
+    assert 'Morning Walk' in names
+    assert len([habit for habit in habits if habit.name == 'Morning Hydration']) == 1
+    assert len(completions) == 28 + 4 + 26 + 21 + 4
+
+
+def test_cancelling_seed_leaves_personal_habits_untouched(session: Session) -> None:
+    added = _invoke_root(['add', 'Morning Walk', '--every', 'daily'])
+    assert added.exit_code == 0
+
+    with (
+        patch('src.cli.seed._can_prompt', return_value=True),
+        patch('src.cli.seed._confirm_existing_data', return_value=False),
+    ):
+        result = _invoke_root(['seed', '--at', REFERENCE_TIME.isoformat()])
+
+    assert result.exit_code == 0
+    assert 'Traceback' not in result.output
+    habit = session.exec(select(Habit)).one()
+    assert habit.name == 'Morning Walk'

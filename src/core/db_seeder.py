@@ -36,65 +36,70 @@ def seed_db(
     xp_service = XPService(session_factory)
     habit_service = HabitService(session_factory, xp_service=xp_service)
 
-    _emit('Ensuring profile exists...')
+    _emit('Preparing the tracker...')
     profile_service.ensure_single_profile()
 
-    _emit('Seeding Morning Hydration (28-day streak)...')
+    _emit('Loading Morning Hydration (28-day streak)...')
     hydration_id = _ensure_habit(
         habit_service,
         session_factory,
         'Morning Hydration',
         Periodicity.DAILY,
         created_at,
+        '💧',
     )
     # Inclusive daily window: reference day and the previous 27 days.
     _complete_daily_offsets(habit_service, hydration_id, reference_time, 27, 0)
 
-    _emit('Seeding Gym Session (weekly consistency)...')
+    _emit('Loading Gym Session (weekly consistency)...')
     gym_id = _ensure_habit(
         habit_service,
         session_factory,
         'Gym Session',
         Periodicity.WEEKLY,
         created_at,
+        '🏋',
     )
     _complete_weekly_mondays(habit_service, gym_id, reference_time)
 
-    _emit('Seeding Read 10 Pages (broken streak)...')
+    _emit('Loading Read 10 Pages (broken streak)...')
     read_id = _ensure_habit(
         habit_service,
         session_factory,
         'Read 10 Pages',
         Periodicity.DAILY,
         created_at,
+        '📚',
     )
     # Ten-day streak, two-day break, then sixteen days through the reference day.
     _complete_daily_offsets(habit_service, read_id, reference_time, 27, 18)
     _complete_daily_offsets(habit_service, read_id, reference_time, 15, 0)
 
-    _emit('Seeding Code Practice (milestones 7/14)...')
+    _emit('Loading Code Practice (milestones 7/14)...')
     code_id = _ensure_habit(
         habit_service,
         session_factory,
         'Code Practice',
         Periodicity.DAILY,
         created_at,
+        '💻',
     )
     # Opening week, seven-day break, then a 14-day streak that awards milestones 7 and 14.
     _complete_daily_offsets(habit_service, code_id, reference_time, 27, 21)
     _complete_daily_offsets(habit_service, code_id, reference_time, 13, 0)
 
-    _emit('Seeding Clean Apartment (weekly edge case)...')
+    _emit('Loading Clean Apartment (weekly edge case)...')
     clean_id = _ensure_habit(
         habit_service,
         session_factory,
         'Clean Apartment',
         Periodicity.WEEKLY,
         created_at,
+        '🧹',
     )
     _complete_weekly_calendar_edges(habit_service, clean_id, reference_time)
 
-    _emit('Finalizing seed...')
+    _emit('Finishing sample data...')
 
 
 def _ensure_habit(
@@ -103,26 +108,33 @@ def _ensure_habit(
     name: str,
     periodicity: Periodicity,
     created_at: datetime,
+    icon: str,
 ) -> int:
     try:
-        habit = habit_service.create_habit(name, periodicity, created_at=created_at)
+        habit = habit_service.create_habit(
+            name, periodicity, created_at=created_at, icon=icon
+        )
     except HabitAlreadyExists:
         habit = _existing_habit(habit_service, name)
     habit_id = require_persisted_id(habit.id, f'{name} habit')
-    _align_created_at(session_factory, habit_id, created_at)
+    _align_fixture_habit(session_factory, habit_id, created_at, icon)
     return habit_id
 
 
-def _align_created_at(
+def _align_fixture_habit(
     session_factory: Callable[[], Iterator[Session]],
     habit_id: int,
     created_at: datetime,
+    icon: str,
 ) -> None:
     session = next(session_factory())
     habit = session.get(Habit, habit_id)
-    if habit is None or habit.created_at == created_at:
+    if habit is None:
+        return
+    if habit.created_at == created_at and habit.icon == icon:
         return
     habit.created_at = created_at
+    habit.icon = icon
     session.add(habit)
     session.commit()
 
