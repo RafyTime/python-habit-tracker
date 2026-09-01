@@ -4,18 +4,18 @@
 
 **Blocked by:** 05d: Edit, archive, and restore habits; 05g: Use the essential workflow from interactive home.
 
-**Status:** ready
+**Status:** done
 
-- [ ] `habit start` welcomes the user and sets or retains the display name without exposing profile management.
-- [ ] An empty database offers a personal first habit or the five predefined sample habits.
-- [ ] The personal path collects a name, daily or weekly repetition, and an optional suggested, custom, or absent icon.
-- [ ] The personal path offers one completion and shows the resulting routine XP and streak feedback.
-- [ ] The sample path loads deterministic four-week histories with predefined icons and XP consistent with completions.
-- [ ] Existing active or archived habits prevent Quick start from offering sample data automatically.
-- [ ] Repeating Quick start never resets or deletes existing data.
-- [ ] Explicit seeding warns before mixing fixture and personal data and requires confirmation unless forced.
-- [ ] Forced and confirmed seeding remain deterministic and idempotent for the predefined habits.
-- [ ] Cancelling any Quick start choice leaves completed earlier choices intact and returns or exits cleanly.
-- [ ] Quick start opens the home screen after the chosen path.
-- [ ] The ending prints the visible GitHub user-guide URL even when terminal hyperlinks are unsupported.
-- [ ] Root CLI journey tests cover personal setup, sample setup, existing data, repeated guidance, seed warning and force behavior, cancellation, icons, and the guide URL.
+- [x] `habit start` welcomes the user and sets or retains the display name without exposing profile management.
+- [x] An empty database offers a personal first habit or the five predefined sample habits.
+- [x] The personal path collects a name, daily or weekly repetition, and an optional suggested, custom, or absent icon.
+- [x] The personal path offers one completion and shows the resulting routine XP and streak feedback.
+- [x] The sample path loads deterministic four-week histories with predefined icons and XP consistent with completions.
+- [x] Existing active or archived habits prevent Quick start from offering sample data automatically.
+- [x] Repeating Quick start never resets or deletes existing data.
+- [x] Explicit seeding warns before mixing fixture and personal data and requires confirmation unless forced.
+- [x] Forced and confirmed seeding remain deterministic and idempotent for the predefined habits.
+- [x] Cancelling any Quick start choice leaves completed earlier choices intact and returns or exits cleanly.
+- [x] Quick start opens the home screen after the chosen path.
+- [x] The ending prints the visible GitHub user-guide URL even when terminal hyperlinks are unsupported.
+- [x] Root CLI journey tests cover personal setup, sample setup, existing data, repeated guidance, seed warning and force behavior, cancellation, icons, and the guide URL.
