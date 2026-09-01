@@ -12,6 +12,11 @@ GUIDE_URL = (
 runner = CliRunner()
 
 
+def _shows_guide_url(output: str) -> bool:
+    compact = ''.join(ch for ch in output if ch.isascii() and not ch.isspace())
+    return GUIDE_URL in compact
+
+
 def _invoke(args: list[str], **kwargs):
     with patch('main.init_db'):
         return runner.invoke(app, args, **kwargs)
@@ -53,7 +58,7 @@ def test_personal_quick_start_sets_name_creates_habit_and_records_one_completion
     assert '📚' in output
     assert '+1 XP' in output
     assert '1-day streak' in output
-    assert GUIDE_URL in output
+    assert _shows_guide_url(output)
     assert 'What would you like to do?' in output
     assert 'Mark a habit done' in output
     icon_titles = [
@@ -121,7 +126,7 @@ def test_sample_quick_start_loads_five_predefined_habits_with_histories(
 
     assert result.exit_code == 0, result.output
     assert 'Alex' in result.stdout
-    assert GUIDE_URL in result.stdout
+    assert _shows_guide_url(result.stdout)
     assert 'What would you like to do?' in result.stdout
 
     listed = _invoke(['list'])
@@ -173,7 +178,7 @@ def test_existing_habits_skip_sample_data_and_keep_history(session: Session) -> 
         result = _invoke(['start'])
 
     assert result.exit_code == 0, result.output
-    assert GUIDE_URL in result.stdout
+    assert _shows_guide_url(result.stdout)
     assert 'What would you like to do?' in result.stdout
     choose_beginning.assert_not_called()
     habits = list(session.exec(select(Habit)))
@@ -293,7 +298,7 @@ def test_skipping_the_first_completion_keeps_the_habit(
         result = _invoke(['start'])
 
     assert result.exit_code == 0, result.output
-    assert GUIDE_URL in result.stdout
+    assert _shows_guide_url(result.stdout)
     assert 'What would you like to do?' in result.stdout
     habit = session.exec(select(Habit)).one()
     assert habit.name == 'Gym Session'

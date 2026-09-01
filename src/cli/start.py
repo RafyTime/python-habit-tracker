@@ -100,5 +100,5 @@ def _finish(display_name: str) -> None:
         render.success(f"You're ready, {display_name}.")
         render.note('Run [cyan]habit[/cyan] whenever you want to check in.')
         render.note('Full user guide:')
-    render.console.print(USER_GUIDE_URL, overflow='ignore', crop=False)
+        render.note(USER_GUIDE_URL)
     home()
