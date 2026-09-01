@@ -18,6 +18,7 @@ from src.cli.home import today as today_command
 from src.cli.overview import cli as overview_cli
 from src.cli.seed import seed as seed_command
 from src.cli.settings import cli as settings_cli
+from src.cli.start import start as start_command
 from src.cli.xp import show_xp as xp_command
 from src.core.config import app_settings
 from src.core.db import init_db
@@ -74,6 +75,7 @@ def main(
     raise Exit()
 
 
+app.command()(start_command)
 app.command()(today_command)
 app.command()(add_command)
 app.command()(done_command)
