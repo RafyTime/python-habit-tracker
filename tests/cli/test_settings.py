@@ -4,7 +4,6 @@ from sqlmodel import Session, select
 from typer.testing import CliRunner
 
 from main import app
-from src.cli.settings import cli
 from src.core.models import AfterAction, Profile
 from src.core.profile import ProfileService
 
@@ -23,33 +22,6 @@ def test_settings_without_subcommand_shows_profile(session: Session):
     result = _invoke(['settings'])
     assert result.exit_code == 0, result.output
     assert 'User' in result.stdout
-
-
-def test_settings_show_display_name(session: Session):
-    """Fresh profile can be viewed through settings without account commands."""
-    ProfileService(lambda: iter([session])).ensure_single_profile()
-
-    result = runner.invoke(cli, ['show'])
-    assert result.exit_code == 0
-    assert 'User' in result.stdout
-    assert 'profile create' not in result.stdout
-    assert 'profile switch' not in result.stdout
-
-
-def test_settings_set_display_name(session: Session):
-    """Users can change the single profile display name via settings."""
-    ProfileService(lambda: iter([session])).ensure_single_profile()
-
-    result = runner.invoke(cli, ['name', 'Alex'])
-    assert result.exit_code == 0
-    assert 'Alex' in result.stdout
-
-    profile = session.exec(select(Profile)).one()
-    assert profile.username == 'Alex'
-
-    show = runner.invoke(cli, ['show'])
-    assert show.exit_code == 0
-    assert 'Alex' in show.stdout
 
 
 def test_settings_shows_display_name_and_home_after_action(
@@ -93,14 +65,3 @@ def test_settings_rejects_unknown_after_action(session: Session) -> None:
     assert 'exit' in result.stdout.lower()
     profile = session.exec(select(Profile)).one()
     assert profile.after_action == AfterAction.HOME
-
-
-def test_non_interactive_settings_name_without_value_fails_with_an_example(
-    session: Session,
-) -> None:
-    result = _invoke(['settings', 'name'])
-
-    assert result.exit_code == 1
-    assert 'habit settings --name' in result.stdout
-    profile = session.exec(select(Profile)).one()
-    assert profile.username == 'User'

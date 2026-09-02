@@ -5,7 +5,6 @@ from sqlmodel import Session
 from typer.testing import CliRunner
 
 from main import app
-from src.cli.xp import cli
 from src.core.models import Completion, Habit, Periodicity, Profile, XPEvent
 
 runner = CliRunner()
@@ -14,95 +13,6 @@ runner = CliRunner()
 def _invoke(args: list[str], **kwargs):
     with patch('main.init_db'):
         return runner.invoke(app, args, **kwargs)
-
-
-def test_xp_log_on_fresh_database(session: Session):
-    """Fresh install can show XP log without profile create/switch guidance."""
-    from src.core.profile import ProfileService
-
-    ProfileService(lambda: iter([session])).ensure_single_profile()
-
-    result = runner.invoke(cli, ['log'])
-    assert result.exit_code == 0
-    assert 'No XP events found' in result.stdout
-    assert 'profile switch' not in result.stdout
-
-
-def test_xp_log_shows_events(session: Session, active_profile: Profile):
-    """Test that xp log prints rows after completions."""
-    habit = Habit(
-        profile_id=active_profile.id, name='Exercise', periodicity=Periodicity.DAILY
-    )
-    session.add(habit)
-    session.commit()
-
-    completion = Completion(
-        habit_id=habit.id,
-        completed_at=datetime.now(),
-        period_key=datetime.now().date().isoformat(),
-    )
-    session.add(completion)
-    session.commit()
-
-    xp_event = XPEvent(
-        profile_id=active_profile.id,
-        amount=1,
-        reason='HABIT_COMPLETION',
-        habit_id=habit.id,
-        completion_id=completion.id,
-    )
-    session.add(xp_event)
-    session.commit()
-
-    result = runner.invoke(cli, ['log'])
-    assert result.exit_code == 0
-    assert 'Recent XP Events' in result.stdout
-    assert '+1' in result.stdout
-    assert 'HABIT_COMPLETION' in result.stdout
-    assert 'Exercise' in result.stdout
-
-
-def test_xp_log_limit(session: Session, active_profile: Profile):
-    """Test that xp log respects the limit option."""
-    habit = Habit(
-        profile_id=active_profile.id, name='Exercise', periodicity=Periodicity.DAILY
-    )
-    session.add(habit)
-    session.commit()
-
-    # Create 5 completions and XP events with different period keys
-    base_date = datetime.now().date()
-    for i in range(5):
-        completion_date = base_date - timedelta(days=i)
-        completion = Completion(
-            habit_id=habit.id,
-            completed_at=datetime.now(),
-            period_key=completion_date.isoformat(),
-        )
-        session.add(completion)
-        session.commit()
-
-        xp_event = XPEvent(
-            profile_id=active_profile.id,
-            amount=1,
-            reason='HABIT_COMPLETION',
-            habit_id=habit.id,
-            completion_id=completion.id,
-        )
-        session.add(xp_event)
-        session.commit()
-
-    result = runner.invoke(cli, ['log', '--limit', '3'])
-    assert result.exit_code == 0
-    # Count occurrences of "+1" - should be at most 3
-    assert result.stdout.count('+1') <= 3
-
-
-def test_xp_log_no_events(session: Session, active_profile: Profile):
-    """Test that xp log shows message when no events exist."""
-    result = runner.invoke(cli, ['log'])
-    assert result.exit_code == 0
-    assert 'No XP events found' in result.stdout
 
 
 def test_xp_on_empty_data_shows_zero_progress_and_a_next_step(

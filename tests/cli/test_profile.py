@@ -1,13 +1,20 @@
 """CLI tests for single-profile settings (replaces multi-profile account flows)."""
 
+from unittest.mock import patch
+
 from sqlmodel import Session, select
 from typer.testing import CliRunner
 
-from src.cli.settings import cli
+from main import app
 from src.core.models import AppState, Completion, Habit, Periodicity, Profile, XPEvent
 from src.core.profile import ProfileService
 
 runner = CliRunner()
+
+
+def _invoke(args: list[str]):
+    with patch('main.init_db'):
+        return runner.invoke(app, args)
 
 
 def test_fresh_startup_ensures_usable_profile(session: Session):
@@ -20,7 +27,7 @@ def test_fresh_startup_ensures_usable_profile(session: Session):
     assert state is not None
     assert state.active_profile_id == profile.id
 
-    result = runner.invoke(cli, ['show'])
+    result = _invoke(['settings'])
     assert result.exit_code == 0
     assert 'Display name' in result.stdout
     assert 'User' in result.stdout
@@ -104,7 +111,7 @@ def test_settings_show_uses_migrated_active_legacy_profile(session: Session):
     session.add(AppState(id=1, active_profile_id=active.id))
     session.commit()
 
-    result = runner.invoke(cli, ['show'])
+    result = _invoke(['settings'])
     assert result.exit_code == 0
     assert 'Alex' in result.stdout
     assert 'profile switch' not in result.stdout

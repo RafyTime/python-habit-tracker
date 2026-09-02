@@ -23,28 +23,19 @@ def _invoke(args: list[str] | None = None, **kwargs):
 
 
 def _invoke_home(**kwargs):
-    return _invoke(['--interactive'], **kwargs)
+    return _invoke([], **kwargs)
 
 
-def test_bare_habit_shows_help(session: Session) -> None:
-    result = _invoke()
-
-    assert result.exit_code == 0
-    assert 'Usage' in result.stdout
-    assert 'today' in result.stdout
-    assert 'What would you like to do?' not in result.stdout
-    assert 'No habits' not in result.stdout
-
-
-def test_non_interactive_interactive_flag_prints_today_snapshot(
+def test_non_interactive_bare_habit_prints_today_snapshot(
     session: Session,
 ) -> None:
-    result = _invoke_home()
+    result = _invoke()
 
     assert result.exit_code == 0
     assert 'User' in result.stdout
     assert 'No habits' in result.stdout
     assert 'habit add' in result.stdout
+    assert 'Usage' not in result.stdout
     assert 'What would you like to do?' not in result.stdout
     assert 'Mark a habit done' not in result.stdout
 

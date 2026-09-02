@@ -8,8 +8,6 @@ from typer import Typer
 from typer.testing import CliRunner
 
 from main import app
-from src.cli.analytics import cli as analytics_cli
-from src.cli.habit import cli as habit_cli
 from src.cli.seed import seed
 from src.core.models import Completion, Habit, Periodicity, Profile, XPEvent
 
@@ -25,13 +23,18 @@ def _invoke_seed(at: datetime = REFERENCE_TIME):
     return result
 
 
+def _invoke_root(args: list[str], **kwargs):
+    with patch('main.init_db'):
+        return runner.invoke(app, args, **kwargs)
+
+
 def test_seed_creates_five_predefined_habits_for_the_single_profile(session: Session):
     """Seed loads exactly five predefined daily and weekly habits on one profile."""
     result = _invoke_seed()
 
     assert 'Sample data is ready' in result.stdout
 
-    listed = runner.invoke(habit_cli, ['list'])
+    listed = _invoke_root(['list'])
     assert listed.exit_code == 0
     assert 'Morning Hydration' in listed.stdout
     assert 'Gym Session' in listed.stdout
@@ -227,27 +230,25 @@ def test_seed_xp_and_analytics_match_the_stored_fixture(session: Session):
     assert 'MILESTONE_STREAK_30' not in {event.reason for event in xp_events}
     assert sum(event.amount for event in xp_events) == 138
 
-    with patch('main.init_db'):
-        xp_status = runner.invoke(app, ['xp'])
+    xp_status = _invoke_root(['xp'])
     assert xp_status.exit_code == 0
     assert '138' in xp_status.stdout
     assert '14' in xp_status.stdout
 
-    longest = runner.invoke(analytics_cli, ['longest'])
+    longest = _invoke_root(['stats'])
     assert longest.exit_code == 0
-    assert 'Longest Streak:' in longest.stdout
     assert '28 days' in longest.stdout
     assert 'Morning Hydration' in longest.stdout
 
-    read_streak = runner.invoke(analytics_cli, ['longest', '--habit', 'Read 10 Pages'])
+    read_streak = _invoke_root(['stats', 'Read 10 Pages'])
     assert read_streak.exit_code == 0
     assert '16 days' in read_streak.stdout
 
-    code_streak = runner.invoke(analytics_cli, ['longest', '--habit', 'Code Practice'])
+    code_streak = _invoke_root(['stats', 'Code Practice'])
     assert code_streak.exit_code == 0
     assert '14 days' in code_streak.stdout
 
-    gym_streak = runner.invoke(analytics_cli, ['longest', '--habit', 'Gym Session'])
+    gym_streak = _invoke_root(['stats', 'Gym Session'])
     assert gym_streak.exit_code == 0
     assert '4 weeks' in gym_streak.stdout
 
@@ -285,11 +286,6 @@ def test_seed_completes_against_a_pooled_sqlite_engine(tmp_path, monkeypatch):
         'Morning Hydration',
         'Read 10 Pages',
     ]
-
-
-def _invoke_root(args: list[str], **kwargs):
-    with patch('main.init_db'):
-        return runner.invoke(app, args, **kwargs)
 
 
 def test_root_seed_on_an_empty_database_loads_sample_data(session: Session) -> None:
