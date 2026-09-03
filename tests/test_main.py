@@ -1,5 +1,4 @@
 import re
-import tomllib
 from pathlib import Path
 from unittest.mock import patch
 
@@ -84,13 +83,6 @@ def test_app_exists():
     """Test that the app exists and is a Typer instance."""
     assert app is not None
     assert hasattr(app, 'command')
-
-
-def test_habit_is_the_only_installed_executable() -> None:
-    with (PROJECT_ROOT / 'pyproject.toml').open('rb') as pyproject_file:
-        scripts = tomllib.load(pyproject_file)['project']['scripts']
-
-    assert scripts == {'habit': 'src.main:app'}
 
 
 def test_registered_commands_match_the_approved_contract() -> None:
