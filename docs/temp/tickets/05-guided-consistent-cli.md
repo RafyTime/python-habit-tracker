@@ -16,17 +16,17 @@
 - [x] [05d - Edit, archive, and restore habits](05d-edit-archive-and-restore-habits.md)
 - [x] [05e - Permanently delete with a specific impact warning](05e-delete-with-impact-warning.md)
 - [x] [05f - Inspect progress through stats and XP](05f-inspect-progress-stats-and-xp.md)
-- [ ] [05g - Use the essential workflow from interactive home](05g-interactive-home.md)
-- [ ] [05h - Finish Quick start and safe sample-data guidance](05h-quick-start-and-safe-sample-data.md)
-- [ ] [05i - Remove the legacy CLI and verify the final contract](05i-remove-legacy-cli.md)
+- [x] [05g - Use the essential workflow from interactive home](05g-interactive-home.md)
+- [x] [05h - Finish Quick start and safe sample-data guidance](05h-quick-start-and-safe-sample-data.md)
+- [x] [05i - Remove the legacy CLI and verify the final contract](05i-remove-legacy-cli.md)
 
 ## Completion criteria
 
-- [ ] `habit` is the only installed executable and the obsolete command hierarchy is gone.
-- [ ] Every core action has a tested explicit form, while prompts appear only in interactive use.
-- [ ] The home screen, habit lifecycle, stats, XP, settings, and seeding use one presentation convention.
-- [ ] Bare `habit` supports both interactive-terminal and read-only non-interactive behavior.
-- [ ] Quick start reaches the first completion without profile setup or memorized commands.
-- [ ] Feature code remains separated by domain and `main.py` remains an application-composition module.
-- [ ] Expected domain failures are actionable and unexpected exceptions are not silently hidden.
-- [ ] CLI journey tests cover persisted outcomes, cancellation, destructive warnings, and readable output.
+- [x] `habit` and `habits` are the only installed executables and the obsolete command hierarchy is gone.
+- [x] Every core action has a tested explicit form, while prompts appear only in interactive use.
+- [x] The home screen, habit lifecycle, stats, XP, settings, and seeding use one presentation convention.
+- [x] Bare `habit` supports both interactive-terminal and read-only non-interactive behavior.
+- [x] Quick start reaches the first completion without profile setup or memorized commands.
+- [x] Feature code remains separated by domain and `main.py` remains an application-composition module.
+- [x] Expected domain failures are actionable and unexpected exceptions are not silently hidden.
+- [x] CLI journey tests cover persisted outcomes, cancellation, destructive warnings, and readable output.
