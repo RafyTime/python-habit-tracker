@@ -1,5 +1,7 @@
 # Guided CLI experience specification
 
+The [CLI experience polish specification](./cli-polish-spec.md) records the final post-delivery refinements and is authoritative where it narrows or changes this contract.
+
 ## Problem Statement
 
 The tracker contains most of its required business behavior, but the command line exposes that behavior through redundant executable names, nested command groups, technical vocabulary, duplicated rendering, and isolated outputs that do not form a clear journey. A beginner must learn commands before reaching the main habit loop, while a returning user receives little help understanding what is due or what to do next. Profile settings, XP, the daily overview, and sample data exist, but they do not yet feel like parts of one product.
@@ -8,7 +10,7 @@ The final Phase 2 experience needs a shorter command contract, a restrained inte
 
 ## Solution
 
-Install one `habit` executable and expose frequent actions directly beneath it with plain language. Bare `habit` becomes a dual-mode entrance: it opens a small home screen and action menu in an interactive terminal, or prints a read-only daily snapshot when interaction is unavailable. A Quick start flow takes a beginner through their display name, first habit or sample data, first completion, and the home screen.
+Install one `habit` executable and expose frequent actions directly beneath it with plain language. Bare `habit` becomes a dual-mode entrance: it opens a small home screen and action menu in an interactive terminal, or prints a read-only daily snapshot when interaction is unavailable. A Quick start flow takes a beginner through their display name, first Habit or Sample data, first Completion, and a choice to enter the home screen or exit.
 
 Keep explicit commands for every core action. Add optional habit icons, globally reliable name selection, safe editing, reversible archiving, specific permanent-delete warnings, compact stats, meaningful settings, grouped generated help, and shared presentation components. Keep lifecycle, analytics, home, XP, settings, seeding, interactive orchestration, and rendering in focused modules that call the existing services and pure analytics functions.
 
@@ -84,21 +86,23 @@ Keep explicit commands for every core action. Add optional habit icons, globally
 - Failed name lookup may show suggestions, but the application never silently chooses a prefix or fuzzy match.
 - A habit has an optional short, single-line Unicode icon. The application does not attempt to classify whether the value is an emoji.
 - The icon is nullable. The after-action preference defaults to home. Local SQLite files are disposable: a schema change may delete the file and start again. Do not add migration code to keep old databases.
-- Explicit creation stores no icon unless one is supplied. Interactive creation offers a small suggested set, custom input, and no icon. Seeded habits receive predefined icons.
-- Editing changes only a habit's displayed name and icon. Archived editing requires explicit archived inclusion. A dedicated clear-icon option removes the icon, and it conflicts with supplying a replacement icon in the same call.
+- Explicit creation stores no icon unless the interactive `--icon` picker is requested. Interactive creation offers a small suggested set, custom input, and no icon. The picker flag fails actionably when interaction is unavailable, and seeded habits receive predefined icons.
+- Editing changes only a habit's displayed name and icon. Interactive editing begins with a choice of mutation rather than assuming a rename. Archived editing requires explicit archived inclusion, and a dedicated clear-icon option remains available.
 - Archive hides a habit from active and due views while preserving completions and XP. Restore returns the same habit and history to active tracking.
 - Delete calculates the completion count and XP amount that will be removed before confirmation. Force skips the prompt but still prints the affected result. The service layer owns the destructive operation and its impact data.
 - Active lists and stats exclude archived habits by default. Archived inclusion is explicit and labelled.
-- Overall stats show active daily and weekly counts, recorded completion count, and the longest streak. Per-habit stats show repetition, status, completion count, and longest streak.
-- Existing pure analytics functions remain responsible for streak calculations. Simple persisted counts do not introduce a second analytics rule set.
+- Habit lists show ID, Habit, current-period Progress, Current streak, and Repetition. Progress uses Due, Done, or Archived without replacing lifecycle Status. Current streak is derived separately from historical Longest streak.
+- `habit today` remains Due-only by default. `--done` includes completed Active habits after Due habits in the same Daily or Weekly group; Archived habits remain excluded, and bare `habit` keeps its Due-only snapshot.
+- Overall stats show active daily and weekly counts, recorded completion count, and the Longest streak. Per-habit stats also show repetition, lifecycle Status, completion count, Longest streak, XP earned, and latest Completion.
+- Pure analytics functions remain responsible for Current and Longest streak calculations. Simple persisted counts and dates do not introduce a second analytics rule set.
 - XP status and recent history share one public command. XP remains secondary on the home screen.
-- Bare settings displays the display name and after-action preference. Explicit options update them without prompts, while the home menu opens an interactive editor for the same values.
-- Quick start sets or retains the display name, offers a personal habit or sample data on an empty database, offers one completion for the personal path, opens home, and prints the visible GitHub user guide URL.
+- Bare settings displays the display name and after-action preference. Explicit options update them without prompts, while Settings from home shows the current values before offering individual changes or a return action.
+- Quick start sets or retains the display name, teaches Habits and Repetition, offers a personal habit or Sample data on an empty database, and prints the explicit commands behind its guided actions. The personal path offers one Completion through the normal Done interaction, explains XP, Current streaks, Milestones, and focused Stats in context, then lets the user enter home or exit.
 - Quick start never resets existing data and does not offer sample data automatically when habits already exist.
 - Explicit seeding warns before mixing fixture data with existing active or archived habits. Force bypasses confirmation, and fixture creation remains deterministic and idempotent.
-- A habit earns five bonus XP once when it first reaches a seven-period streak. The milestone claim belongs to the habit identity, survives archive and restoration, and is removed by permanent deletion. Reusing a deleted habit name creates a new identity with its own possible claim. Level changes may receive stronger presentation but do not award XP.
-- One shared presentation module owns headings, tables, progress, success, warnings, recoverable errors, confirmations, and contextual next steps.
-- Output uses calm, supportive language. Routine completion feedback stays restrained, while the seven-period milestone and level changes may use stronger celebration.
+- A habit earns five bonus XP once when it first reaches each of the 3, 7, 14, and 30-period Milestones. Milestone claims belong to the habit identity, survive archive and restoration, and are removed by permanent deletion. Reusing a deleted habit name creates a new identity with its own possible claims. Level changes may receive stronger presentation but do not award XP.
+- One shared presentation module owns semantic card headings, prompt spacing and styling, tables, progress, success, warnings, recoverable errors, confirmations, and contextual next steps.
+- Output uses calm, supportive language. Routine completion feedback stays restrained, while Milestones and level changes may use stronger celebration.
 - Icons, semantic symbols, and colors support written labels. The text remains complete without styling.
 - Expected domain failures become actionable user messages with failed exits where the action failed. Unexpected exceptions are not broadly swallowed.
 
@@ -109,13 +113,15 @@ Keep explicit commands for every core action. Add optional habit icons, globally
 - Existing command tests remain prior art for isolated database injection, interactive prompt mocking, completion and XP outcomes, lifecycle safety, seed determinism, and archived analytics labels. Tests that encode obsolete command paths are reorganized or replaced.
 - Command-contract tests verify the single executable, flat commands, Rich help groups, long and short options, accepted repetition aliases, and absence of old command paths.
 - Mode tests distinguish interactive prompting from non-interactive failure, including bare-command snapshot behavior, missing arguments, cancellation, Ctrl+C, and the after-action preference.
-- Quick start tests cover a personal first habit, one completion, sample data on an empty database, existing data, cancellation, and the visible user guide URL.
+- Quick start tests cover a personal first habit, one Completion through the normal Done interaction, Sample data on an empty database, existing data, no Due habits, cancellation, visible explicit commands, focused Stats, home entry or exit, and the visible user guide URL.
 - Name tests cover IDs, capitalization, outer and repeated whitespace, underscores, global active and archived uniqueness, archived restore guidance, edit collisions, and non-guessing lookup failures.
-- Icon tests cover explicit and interactive creation, custom Unicode values, no icon, seeded defaults, editing, clearing, conflicting options, and rendering the habit name beside the icon.
+- Icon tests cover the interactive picker flag, suggested and custom values, no icon, seeded defaults, editing, keeping, clearing, cancellation, non-interactive failure, and rendering the habit name beside the icon.
 - Lifecycle tests cover archive history retention, restoration, archived editing, delete impact preview, confirmed deletion, forced deletion, cancellation, and the records actually removed.
-- Milestone tests cover the first seven-period streak, the one-time five-XP award, rebuilding the same streak without another award, retention through archive and restoration, removal through permanent deletion, and a new habit identity reusing a deleted name.
+- Milestone tests cover the 3, 7, 14, and 30-period thresholds, each one-time five-XP award, rebuilding a claimed threshold without another award, retention through archive and restoration, removal through permanent deletion, and a new habit identity reusing a deleted name.
 - Presentation tests assert stable meaning rather than terminal escape sequences or exact decorative styling. Text-only output must still identify statuses, warnings, names, and next actions.
-- Stats tests cover empty data, overall counts, per-habit counts, longest streaks, active defaults, and explicitly labelled archived inclusion.
+- Current streak tests cover Daily and Weekly Habits, completed and pending current Periods, gaps, restarts, no history, and ISO week boundaries through pure Analytics. CLI tests cover the corresponding running, pending, Broken, and not-started List meanings.
+- Today tests cover the Due-only default and `--done` inclusion in Daily and Weekly groups while continuing to exclude Archived Habits.
+- Stats tests cover empty data, overall counts, per-habit counts, Longest streaks, XP earned, latest Completion, active defaults, and explicitly labelled archived inclusion.
 - Seed tests cover empty and nonempty databases, warning and force behavior, deterministic reference time, idempotence, icons, complete four-week histories, and XP consistency.
 - Error tests cover expected domain failures with actionable exits and verify that unexpected errors are not converted into generic recoverable messages.
 
@@ -125,7 +131,7 @@ Keep explicit commands for every core action. Add optional habit icons, globally
 - Custom repetition intervals, negative habits, and changing a habit's daily or weekly repetition after creation.
 - Week-start preferences. Period keys continue to use local calendar dates and ISO weeks unless a later timezone specification changes that contract.
 - Reminders, notifications, scheduled background work, and calendar integrations.
-- XP controls, penalties, or new reward mechanics beyond completion rewards and the retained seven-period milestone.
+- XP controls, penalties, or new reward mechanics beyond completion rewards and the retained 3, 7, 14, and 30-period Milestones.
 - Completion rates, missed-period reports, monthly trends, charts, and a finalized extended-stats command.
 - Web, REST, desktop GUI, and mobile interfaces.
 - Compatibility aliases for the old executables or nested commands.

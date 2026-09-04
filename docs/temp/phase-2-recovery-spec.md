@@ -1,12 +1,14 @@
 # Phase 2 Recovery and UX Refactor Specification
 
+The [CLI experience polish specification](./cli-polish-spec.md) records the final post-delivery refinements and is authoritative where it narrows or changes this contract.
+
 ## Problem Statement
 
 The habit tracker fulfils much of the assignment's core behaviour, but its implementation has grown beyond the agreed scope. Multi-profile setup, duplicated CLI rendering, and incomplete test fixture data make the first-use experience harder than necessary and leave the source code, documentation, and conception artefacts out of alignment. The project needs a focused, testable core that is easy for a new CLI user to understand and easy to explain in the Phase 2 portfolio presentation.
 
 ## Solution
 
-Deliver a single-user habit tracker with a minimal customizable profile, positive habits with Daily and Weekly periodicities, optional habit icons, persistence, pure functional analytics, a predictable test fixture, and a guided CLI. Install one `habit` executable and put frequent actions directly beneath it. Running bare `habit` opens a small interactive home screen in a terminal and prints a read-only daily snapshot when interaction is unavailable. Retain XP, the seven-period milestone, and the daily overview as small enhancements, but defer further gamification and unimplemented extensions. Give users three clearly distinct lifecycle actions: archive a habit while preserving history, restore it later, or permanently delete it after an explicit warning. Standardize CLI feedback, make the quality gates green, and document both a quick start and a fuller guide.
+Deliver a single-user habit tracker with a minimal customizable profile, positive habits with Daily and Weekly periodicities, optional habit icons, persistence, pure functional analytics, a predictable test fixture, and a guided CLI. Install one `habit` executable and put frequent actions directly beneath it. Running bare `habit` opens a small home screen in an interactive terminal and prints a read-only daily snapshot when interaction is unavailable. Retain XP, Milestones at 3, 7, 14, and 30 consecutive periods, and the daily overview as small enhancements, but defer further gamification and unimplemented extensions. Give users three clearly distinct lifecycle actions: archive a habit while preserving history, restore it later, or permanently delete it after an explicit warning. Standardize CLI feedback, make the quality gates green, and document both a quick start and a fuller guide.
 
 The primary seam is the command line: commands persist state, then return clear user-facing output. Tests should exercise this seam with an isolated SQLite database. The existing pure analytics functions remain a separate seam and are tested directly. No repository abstraction is introduced because there is only one persistence implementation.
 
@@ -34,7 +36,7 @@ The primary seam is the command line: commands persist state, then return clear 
 
 - The required scope is positive habits with Daily and Weekly periodicities, completions, SQLite persistence, functional analytics, a CLI, a test fixture, tests, and documentation.
 - `Periodicity`, `Analytics`, and `Test fixture` are the canonical domain and assignment terms. The CLI presents the same concepts as `Repetition`, `Stats`, and `Sample data`.
-- XP and the daily overview remain small enhancements. A habit earns five bonus XP once when it first reaches a seven-period streak. The milestone claim belongs to the habit identity, survives archive and restoration, and is removed by permanent deletion. Level changes may receive stronger presentation but do not award XP.
+- XP and the daily overview remain small enhancements. A habit earns five bonus XP once when it first reaches each of the 3, 7, 14, and 30-period Milestones. The claims belong to the habit identity, survive archive and restoration, and are removed by permanent deletion. Level changes may receive stronger presentation but do not award XP.
 - Custom periodicities, negative habits, REST/GUI work, multiple accounts, and further gamification are deferred.
 - There is exactly one persisted profile. It is initialized automatically on a fresh database and supports a display name and an `after action` preference for the interactive home screen. Creating, listing, switching, and deleting profiles are removed from the normal workflow.
 - Local SQLite databases are disposable during development. Schema changes may replace the database instead of preserving historical migrations, provided the application code and schema remain aligned. This does not weaken the runtime safety rules for Quick start, seeding, archive, restoration, or permanent deletion.
@@ -44,16 +46,19 @@ The primary seam is the command line: commands persist state, then return clear 
 - Bare `habit` opens the interactive home screen only when an interactive terminal is available. Otherwise it prints the same read-only snapshot as `habit today` and exits. A persisted setting chooses whether an interactive action returns home or exits, with `home` as the default.
 - Missing command arguments open prompts only in an interactive terminal. The same omission in non-interactive use fails with an actionable command example rather than waiting for input.
 - Habit names are unique across active and archived habits after case folding, trimming, collapsing repeated whitespace, and treating underscores as spaces. The stored spelling remains unchanged for display. Commands resolve habits by numeric ID or an exact normalized name and never guess with fuzzy matching.
-- A habit has an optional short Unicode icon. Icons are user supplied or selected from a small interactive list, remain visible beside the habit name, and never replace the name. Habit names and icons can be edited, but periodicity is immutable because existing completion period keys depend on it.
+- A habit has an optional short Unicode icon. The interactive `--icon` flag opens a small picker with suggested, custom, and no-icon choices rather than accepting an inline value. Icons remain visible beside the habit name and never replace the name. Habit names and icons can be edited, but periodicity is immutable because existing completion period keys depend on it.
 - The icon is nullable and the after-action preference defaults to `home`. A fresh database receives both defaults from the current schema.
 - Archive, restore, and delete have different, visible semantics. Archiving hides a habit from active lists and due prompts while retaining completions and XP events. Restoring returns the same habit and history to active tracking. Permanent deletion removes the habit and dependent records in one operation and shows the affected completion and XP counts before confirmation.
 - Active habit views exclude archived habits. Historical analytics can include archived habits only through an explicit, clearly labelled choice.
+- Habit lists expose ID, Habit, current-period Progress, Current streak, and Repetition. Progress distinguishes Due, Done, and Archived without replacing lifecycle Status.
+- `habit today` remains Due-only by default. Its `--done` option includes completed Active Habits after Due Habits in the same Daily or Weekly group, while Archived Habits remain excluded.
 - The habit module owns add, edit, list, complete, due, archive, restore, delete, and habit-resolution behaviours. The CLI translates input into service calls and renders results; it does not duplicate domain rules.
-- The analytics module remains pure and receives immutable habit/completion data. Persistence-to-analytics conversion belongs outside the CLI's presentation code.
-- `habit stats` gives a compact summary using existing data: active habit counts, recorded completions, and longest streak results. With a habit argument it reports that habit's schedule, completion count, and longest streak. Richer rates, trends, missed-period analysis, and charts are deferred.
-- Shared CLI presentation helpers provide a small, consistent interface for headings, tables, progress, success messages, recoverable errors, warnings, and next-step guidance. The voice is calm and supportive, with stronger celebration reserved for the seven-period milestone and level changes. Text always carries the meaning when color or Unicode styling is unavailable.
+- The analytics module remains pure and receives immutable habit/completion data. It calculates Current streak separately from historical Longest streak. Persistence-to-analytics conversion belongs outside the CLI's presentation code.
+- `habit stats` gives a compact summary using existing data: active habit counts, recorded Completions, and Longest streak results. With a Habit argument it also reports that Habit's Repetition, lifecycle Status, Completion count, Longest streak, XP earned, and latest Completion. Richer rates, trends, missed-Period analysis, and charts are deferred.
+- Shared CLI presentation helpers provide a small, consistent interface for semantic card headings, prompt spacing and styling, tables, progress, success messages, recoverable errors, warnings, and next-step guidance. The voice is calm and supportive, with stronger celebration reserved for Milestones and level changes. Text always carries the meaning when color or Unicode styling is unavailable.
 - Flattening applies only to the public command tree. Habit lifecycle, analytics, home and overview, XP, settings, seeding, interactive orchestration, and presentation remain in focused modules. `main.py` composes those modules instead of absorbing their implementations.
-- Quick start sets or retains the display name, creates a personal habit or loads sample data on an empty database, offers one completion, opens home, and links to the GitHub user guide. It never resets existing data.
+- Settings from the interactive home shows current values before offering individual changes or a return action.
+- Quick start sets or retains the display name, creates a personal Habit or loads Sample data on an empty database, and teaches the Add, Today, Done, and focused Stats journey with the normal interactions and visible explicit commands. It explains XP, Current streaks, and Milestones in context, lets the user enter home or exit, and never resets existing data.
 - The test fixture is deterministic from an injectable reference time. All five required habits have created dates consistent with their first completion and data spanning four weeks. XP events, including the applicable milestone awards, are derived from the same completion history.
 - CI runs the same intended quality commands contributors run locally. Pytest fixture injection may be excluded from unused-argument linting in test files only; source diagnostics are fixed rather than suppressed.
 - The submitted Phase 1 PDF remains a historical artefact. Phase 2 documentation and the presentation explain the deliberate scope refinement instead of pretending no divergence occurred.
@@ -63,13 +68,13 @@ The primary seam is the command line: commands persist state, then return clear 
 - Test observable behaviour through the root CLI and isolated SQLite persistence: fresh startup, add, edit, complete, due, archive, restore, delete, stats, XP, settings, seeding, and user-facing confirmation and error text.
 - Test the command contract itself: only the `habit` entry point, the flattened help groups, accepted long and short options, day/week aliases, and removal of obsolete commands.
 - Test habit-name normalization and global uniqueness across active and archived habits, including case differences, repeated whitespace, underscores, and clear guidance to restore an archived match.
-- Test optional icons through creation, editing, clearing, seeding, and rendering while keeping habit names present in plain output.
+- Test optional icons through picker activation, creation, editing, keeping, clearing, cancellation, non-interactive failure, seeding, and rendering while keeping Habit names present in plain output.
 - Test interactive and non-interactive paths separately. Cover the home loop, the `after action` setting, cancellation, missing arguments, Quick start choices, sample-data safety, and the read-only bare-command fallback.
 - Test the permanent-delete preview and result against the actual completion and XP records removed.
-- Test pure analytics directly with immutable data for daily gaps, weekly sequences, ISO year boundaries, duplicate period keys, empty data, and archived-history inclusion.
+- Test pure analytics directly with immutable data for Current and Longest streaks, Daily gaps, Weekly sequences, pending current Periods, restarts, ISO year boundaries, duplicate period keys, empty data, and archived-history inclusion.
 - Validate the test fixture as a complete outcome: exactly five predefined habits, at least one Daily and one Weekly habit, four-week histories, valid creation timestamps, and XP consistent with stored completion and milestone records.
 - Test fresh-database initialization rather than historical schema migration. The current schema, model defaults, and automatic single profile must align.
-- Test the milestone through observable completion, XP, archive, restoration, and permanent-deletion outcomes. Rebuilding a seven-period streak for the same habit must not award it twice.
+- Test the 3, 7, 14, and 30-period Milestones through observable Completion, XP, Archive, Restoration, and Permanent deletion outcomes. Rebuilding a claimed threshold for the same Habit must not award it twice.
 - Keep formatter, linter, and type checks as zero-warning gates. Test-only lint configuration is limited to pytest's injected fixture parameters.
 - Retain the existing command tests as prior art, but reorganize or replace them where they assert obsolete multi-profile behaviour or implementation detail.
 
@@ -78,7 +83,7 @@ The primary seam is the command line: commands persist state, then return clear 
 - Multiple user accounts or profile switching.
 - Custom-length periodicities and negative habits.
 - REST APIs, graphical/web interfaces, cloud synchronization, notifications, and authentication.
-- New XP mechanics beyond completion rewards, displayed level progress, and the retained seven-period milestone.
+- New XP mechanics beyond completion rewards, displayed Level progress, and the retained 3, 7, 14, and 30-period Milestones.
 - Additional profile preferences such as week-start rules, reminders, and XP controls.
 - Extended analytics such as completion rates, missed-period reports, monthly trends, and charts.
 - Rewriting or re-submitting the original Phase 1 conception PDF.
@@ -88,6 +93,7 @@ The primary seam is the command line: commands persist state, then return clear 
 
 - The primary success measure is a first-time user reaching `add -> done -> stats` through Quick start without profile setup or memorized commands.
 - The detailed command and interaction contract lives in `docs/temp/cli-experience-spec.md`.
+- The final CLI refinements live in `docs/temp/cli-polish-spec.md`.
 - Timezone handling beyond the current local-calendar baseline remains undecided. A later specification may define a user-configured timezone, a system-derived default, or behavior when that timezone changes; this specification neither promises nor forbids that extension.
 - The full user guide should be practical rather than exhaustive: installation, first run, command examples, habit lifecycle, analytics, fixture data, and troubleshooting.
 - The Phase 2 presentation should be 5-10 customer-facing slides and contain visual evidence of the real, final implementation.

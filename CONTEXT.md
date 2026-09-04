@@ -53,6 +53,10 @@ _Avoid_: Broken habit, failure
 A run of consecutive periods in which a habit has a completion.
 _Avoid_: Run streak, chain
 
+**Current streak**:
+For an Active habit, a run of consecutive completed periods ending in the current period, or in the immediately preceding period while the current period remains open. It is zero after a missed period separates that run from the current period.
+_Avoid_: App streak, activity streak, general streak
+
 **Longest streak**:
 The greatest number of consecutive completed periods for one habit. The overall longest streak is the greatest such result among the included habits.
 _Avoid_: Best run, maximum chain
@@ -94,7 +98,7 @@ A progress tier derived from accumulated XP.
 _Avoid_: Rank
 
 **Milestone**:
-The first time a habit reaches a seven-period streak, which awards five bonus XP once for that habit. Archiving and restoration retain the claim, while permanent deletion removes it with the habit.
+The first time a habit reaches each of the 3, 7, 14, and 30-period streak thresholds. Each milestone awards five bonus XP once for that habit; archiving and restoration retain its claims, while permanent deletion removes them with the habit.
 _Avoid_: Level, recurring bonus
 
 **Analytics**:
