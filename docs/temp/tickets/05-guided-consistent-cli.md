@@ -2,7 +2,7 @@
 
 **What to build:** Replace the nested and inconsistent CLI with the agreed `habit` command contract, shared presentation system, small interactive home screen, and Quick start flow. Preserve complete explicit commands for documentation and automation.
 
-**Source:** [`docs/temp/cli-experience-spec.md`](../cli-experience-spec.md)
+**Sources:** [Guided CLI experience specification](../cli-experience-spec.md); [CLI experience polish specification](../cli-polish-spec.md)
 
 **Blocked by:** 03 - Offer clear archive and permanent-delete habit lifecycles.
 
@@ -19,6 +19,13 @@
 - [x] [05g - Use the essential workflow from interactive home](05g-interactive-home.md)
 - [x] [05h - Finish Quick start and safe sample-data guidance](05h-quick-start-and-safe-sample-data.md)
 - [x] [05i - Remove the legacy CLI and verify the final contract](05i-remove-legacy-cli.md)
+
+### Post-delivery polish
+
+- [ ] [05j - Show accurate current progress](05j-accurate-current-progress.md)
+- [ ] [05k - Add focused Habit Stats details](05k-focused-habit-stats.md)
+- [ ] [05l - Polish interactive presentation and editing](05l-polished-interactive-presentation.md)
+- [ ] [05m - Teach the Habit journey in Quick start](05m-teach-the-habit-journey.md)
 
 ## Completion criteria
 
