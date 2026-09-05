@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime
 from typing import Annotated
 
 import questionary
@@ -6,6 +7,8 @@ from rich.prompt import Confirm, Prompt
 from typer import Argument, Exit, Option
 
 from src.cli import render
+from src.core.analytics import CompletionDTO, CurrentStreakDTO, HabitDTO
+from src.core.analytics import current_streak_for_habit as calculate_current_streak
 from src.core.db import get_session
 from src.core.habit import (
     HabitAlreadyCompletedForPeriod,
@@ -15,7 +18,7 @@ from src.core.habit import (
     HabitNotFound,
     HabitService,
 )
-from src.core.models import Habit, Periodicity, require_persisted_id
+from src.core.models import Completion, Habit, Periodicity, require_persisted_id
 from src.core.xp import XPService
 
 _REPETITION_ALIASES = {
@@ -63,6 +66,42 @@ def _current_period_phrase(periodicity: Periodicity) -> str:
 def _streak_label(streak: int, periodicity: Periodicity) -> str:
     unit = 'day' if periodicity == Periodicity.DAILY else 'week'
     return f'{streak}-{unit} streak'
+
+
+def _habit_dto(habit: Habit) -> HabitDTO:
+    return HabitDTO(
+        id=require_persisted_id(habit.id, 'Habit'),
+        name=habit.name,
+        periodicity=habit.periodicity,
+        created_at=habit.created_at,
+        is_active=habit.is_active,
+    )
+
+
+def _completion_dto(completion: Completion) -> CompletionDTO:
+    return CompletionDTO(
+        habit_id=completion.habit_id,
+        completed_at=completion.completed_at,
+        period_key=completion.period_key,
+    )
+
+
+def _progress_label(habit: Habit, due_ids: set[int]) -> str:
+    if not habit.is_active:
+        return 'Archived'
+    habit_id = require_persisted_id(habit.id, 'Habit')
+    return 'Due' if habit_id in due_ids else 'Done'
+
+
+def _current_streak_cell(habit: Habit, streak: CurrentStreakDTO) -> str:
+    if not habit.is_active:
+        return '—'
+    if streak.length > 0:
+        symbol = '⏳' if streak.pending else '🔥'
+        return f'{symbol} {streak.length}'
+    if streak.has_history:
+        return '❄ Broken'
+    return '—'
 
 
 def _picker_label(habit: Habit) -> str:
@@ -236,19 +275,40 @@ def show_habits(
             render.next_step('add one with [cyan]habit add[/cyan].')
             return
 
+        now = datetime.now()
+        due_ids = {
+            require_persisted_id(habit.id, 'Habit')
+            for habit in service.get_due_habits(when=now)
+        }
+        completion_dtos = [
+            _completion_dto(completion)
+            for completion in service.list_completions(
+                habit_ids=[require_persisted_id(habit.id, 'Habit') for habit in habits]
+            )
+        ]
+
         render.heading('Habits')
         rows = []
         row_styles: list[str | None] = []
         for habit in habits:
+            streak = calculate_current_streak(
+                _habit_dto(habit), completion_dtos, now=now
+            )
             rows.append(
                 [
+                    str(require_persisted_id(habit.id, 'Habit')),
                     render.labelled_habit(habit.name, habit.icon),
+                    _progress_label(habit, due_ids),
+                    _current_streak_cell(habit, streak),
                     _repetition_label(habit.periodicity),
-                    'Active' if habit.is_active else 'Archived',
                 ]
             )
             row_styles.append('yellow' if not habit.is_active else None)
-        render.table(['Name', 'Every', 'Status'], rows, row_styles=row_styles)
+        render.table(
+            ['ID', 'Habit', 'Progress', 'Streak', 'Repetition'],
+            rows,
+            row_styles=row_styles,
+        )
         if archived:
             render.blank()
             render.warning('Includes archived habits.')
@@ -277,7 +337,7 @@ def done(
     habit_id = require_persisted_id(habit.id, 'Habit')
     level_before, _, _ = xp_service.get_level_progress_for_active_profile()
     try:
-        _, milestone_events = service.complete_habit(habit_id)
+        completion, milestone_events = service.complete_habit(habit_id)
     except HabitArchived:
         render.error(f"'{habit.name}' is archived and cannot be marked done.")
         raise Exit(1)
@@ -289,16 +349,23 @@ def done(
 
     label = render.labelled_habit(habit.name, habit.icon)
     period = _current_period_phrase(habit.periodicity)
-    streak = service.streak_for_habit(habit)
+    current = calculate_current_streak(
+        _habit_dto(habit),
+        [
+            _completion_dto(item)
+            for item in service.list_completions(habit_ids=[habit_id])
+        ],
+        now=completion.completed_at,
+    )
     level_after, _, _ = xp_service.get_level_progress_for_active_profile()
     due_habits = service.get_due_habits()
     with render.view():
         render.success(f'{label} is done for {period}.')
-        render.note(f'+1 XP · {_streak_label(streak, habit.periodicity)}')
+        render.note(f'+1 XP · {_streak_label(current.length, habit.periodicity)}')
         if milestone_events:
             bonus = sum(event.amount for event in milestone_events)
             render.success(
-                f'Milestone: {_streak_label(streak, habit.periodicity)}. +{bonus} XP'
+                f'Milestone: {_streak_label(current.length, habit.periodicity)}. +{bonus} XP'
             )
         if level_after > level_before:
             render.success(f'Level up: Level {level_after}.')

@@ -38,3 +38,13 @@ class LongestStreakDTO(BaseModel):
     habit_id: int | None
     habit_name: str | None
     periodicity: Periodicity | None
+
+
+class CurrentStreakDTO(BaseModel):
+    """Current streak for one habit relative to a reference time."""
+
+    model_config = ConfigDict(frozen=True)
+
+    length: int
+    pending: bool
+    has_history: bool

@@ -359,6 +359,39 @@ def test_failed_home_action_prompts_before_returning(
     assert result.stdout.count('What would you like to do?') >= 2
 
 
+def test_bare_habit_keeps_the_due_only_snapshot(
+    session: Session, active_profile: Profile
+) -> None:
+    due = Habit(
+        profile_id=active_profile.id,
+        name='Due Habit',
+        periodicity=Periodicity.DAILY,
+    )
+    done = Habit(
+        profile_id=active_profile.id,
+        name='Done Habit',
+        periodicity=Periodicity.DAILY,
+    )
+    session.add_all([due, done])
+    session.commit()
+    session.add(
+        Completion(
+            habit_id=done.id,
+            completed_at=datetime.now(),
+            period_key=datetime.now().date().isoformat(),
+        )
+    )
+    session.commit()
+
+    result = _invoke()
+
+    assert result.exit_code == 0
+    assert 'Due Habit' in result.stdout
+    assert 'Done Habit' not in result.stdout
+    assert 'Due today' in result.stdout
+    assert 'This week' not in result.stdout
+
+
 def test_exit_preference_ends_after_a_failed_action(
     session: Session, active_profile: Profile
 ) -> None:

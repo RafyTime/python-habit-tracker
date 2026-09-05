@@ -4,6 +4,7 @@ from datetime import datetime
 
 from src.core.analytics.dto import CompletionDTO, HabitDTO
 from src.core.analytics.functions import (
+    current_streak_for_habit,
     filter_habits_by_archived_inclusion,
     filter_habits_by_periodicity,
     list_all_habits,
@@ -505,3 +506,239 @@ def test_longest_streak_across_habits_archived_inclusion():
     archived_result = longest_streak_across_habits(all_habits, completions)
     assert archived_result.length == 3
     assert archived_result.habit_name == 'Archived Habit'
+
+
+_NOW = datetime(2026, 3, 4, 12, 0, 0)
+
+
+def _habit(
+    *,
+    habit_id: int = 1,
+    name: str = 'Daily Habit',
+    periodicity: Periodicity = Periodicity.DAILY,
+    is_active: bool = True,
+) -> HabitDTO:
+    return HabitDTO(
+        id=habit_id,
+        name=name,
+        periodicity=periodicity,
+        created_at=datetime(2026, 1, 1),
+        is_active=is_active,
+    )
+
+
+def _completion(period_key: str, *, habit_id: int = 1) -> CompletionDTO:
+    return CompletionDTO(
+        habit_id=habit_id,
+        completed_at=datetime(2026, 1, 1),
+        period_key=period_key,
+    )
+
+
+def test_current_streak_counts_completed_daily_periods_back_from_today():
+    """Completing today counts consecutive Daily periods backward from today."""
+    result = current_streak_for_habit(
+        _habit(),
+        [
+            _completion('2026-03-02'),
+            _completion('2026-03-03'),
+            _completion('2026-03-04'),
+        ],
+        now=_NOW,
+    )
+
+    assert result.length == 3
+    assert result.pending is False
+    assert result.has_history is True
+
+
+def test_current_streak_is_pending_when_today_is_still_due():
+    """A due Daily period keeps the preceding run pending until today ends."""
+    result = current_streak_for_habit(
+        _habit(),
+        [
+            _completion('2026-03-02'),
+            _completion('2026-03-03'),
+        ],
+        now=_NOW,
+    )
+
+    assert result.length == 2
+    assert result.pending is True
+    assert result.has_history is True
+
+
+def test_current_streak_is_zero_after_a_missed_preceding_daily_period():
+    """Older Daily history does not keep a Current streak after a missed day."""
+    result = current_streak_for_habit(
+        _habit(),
+        [
+            _completion('2026-02-28'),
+            _completion('2026-03-01'),
+        ],
+        now=_NOW,
+    )
+
+    assert result.length == 0
+    assert result.pending is False
+    assert result.has_history is True
+
+
+def test_current_streak_restarts_at_one_after_a_daily_gap():
+    """Completing today after a gap starts a new Current streak of one."""
+    result = current_streak_for_habit(
+        _habit(),
+        [
+            _completion('2026-02-28'),
+            _completion('2026-03-01'),
+            _completion('2026-03-04'),
+        ],
+        now=_NOW,
+    )
+
+    assert result.length == 1
+    assert result.pending is False
+    assert result.has_history is True
+
+
+def test_current_streak_with_no_completion_history_is_not_started():
+    result = current_streak_for_habit(_habit(), [], now=_NOW)
+
+    assert result.length == 0
+    assert result.pending is False
+    assert result.has_history is False
+
+
+def test_current_streak_counts_completed_weekly_periods_back_from_this_week():
+    result = current_streak_for_habit(
+        _habit(name='Weekly Habit', periodicity=Periodicity.WEEKLY),
+        [
+            _completion('2026-W08'),
+            _completion('2026-W09'),
+            _completion('2026-W10'),
+        ],
+        now=_NOW,
+    )
+
+    assert result.length == 3
+    assert result.pending is False
+    assert result.has_history is True
+
+
+def test_current_streak_is_pending_when_this_week_is_still_due():
+    result = current_streak_for_habit(
+        _habit(name='Weekly Habit', periodicity=Periodicity.WEEKLY),
+        [
+            _completion('2026-W08'),
+            _completion('2026-W09'),
+        ],
+        now=_NOW,
+    )
+
+    assert result.length == 2
+    assert result.pending is True
+    assert result.has_history is True
+
+
+def test_current_streak_is_zero_after_a_missed_preceding_weekly_period():
+    result = current_streak_for_habit(
+        _habit(name='Weekly Habit', periodicity=Periodicity.WEEKLY),
+        [_completion('2026-W08')],
+        now=_NOW,
+    )
+
+    assert result.length == 0
+    assert result.pending is False
+    assert result.has_history is True
+
+
+def test_current_streak_restarts_at_one_after_a_weekly_gap():
+    result = current_streak_for_habit(
+        _habit(name='Weekly Habit', periodicity=Periodicity.WEEKLY),
+        [
+            _completion('2026-W07'),
+            _completion('2026-W08'),
+            _completion('2026-W10'),
+        ],
+        now=_NOW,
+    )
+
+    assert result.length == 1
+    assert result.pending is False
+    assert result.has_history is True
+
+
+def test_current_streak_ignores_duplicate_period_keys():
+    result = current_streak_for_habit(
+        _habit(),
+        [
+            _completion('2026-03-03'),
+            _completion('2026-03-04'),
+            _completion('2026-03-04'),
+        ],
+        now=_NOW,
+    )
+
+    assert result.length == 2
+    assert result.pending is False
+
+
+def test_current_streak_ignores_completions_for_other_habits():
+    result = current_streak_for_habit(
+        _habit(),
+        [
+            _completion('2026-03-03', habit_id=2),
+            _completion('2026-03-04'),
+        ],
+        now=_NOW,
+    )
+
+    assert result.length == 1
+    assert result.pending is False
+    assert result.has_history is True
+
+
+def test_current_streak_counts_weekly_periods_across_an_iso_year_boundary():
+    """ISO week 52 of 2025 and week 1 of 2026 are consecutive periods."""
+    now = datetime(2026, 1, 1, 12, 0, 0)
+    result = current_streak_for_habit(
+        _habit(name='Weekly Habit', periodicity=Periodicity.WEEKLY),
+        [
+            _completion('2025-W52'),
+            _completion('2026-W01'),
+        ],
+        now=now,
+    )
+
+    assert result.length == 2
+    assert result.pending is False
+    assert result.has_history is True
+
+
+def test_current_streak_pending_weekly_run_survives_an_iso_year_boundary():
+    now = datetime(2026, 1, 1, 12, 0, 0)
+    result = current_streak_for_habit(
+        _habit(name='Weekly Habit', periodicity=Periodicity.WEEKLY),
+        [_completion('2025-W52')],
+        now=now,
+    )
+
+    assert result.length == 1
+    assert result.pending is True
+    assert result.has_history is True
+
+
+def test_current_streak_does_not_apply_to_an_archived_habit():
+    result = current_streak_for_habit(
+        _habit(is_active=False),
+        [
+            _completion('2026-03-02'),
+            _completion('2026-03-03'),
+            _completion('2026-03-04'),
+        ],
+        now=_NOW,
+    )
+
+    assert result.length == 0
+    assert result.pending is False
+    assert result.has_history is True

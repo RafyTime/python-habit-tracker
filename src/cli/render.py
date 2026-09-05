@@ -171,8 +171,11 @@ def next_step(message: str) -> None:
     _emit(line)
 
 
-def list_section(title: str, names: list[str]) -> None:
-    if not names:
+def list_section(
+    title: str, names: list[str], *, done_names: list[str] | None = None
+) -> None:
+    completed = done_names or []
+    if not names and not completed:
         return
     blank()
     _emit(Text(title, style='bold'))
@@ -180,6 +183,13 @@ def list_section(title: str, names: list[str]) -> None:
         line = Text('  ')
         line.append('○ ', style='cyan')
         line.append_text(Text.from_markup(name))
+        _emit(line)
+    for name in completed:
+        line = Text('  ', style='dim')
+        line.append('✓ ', style='dim')
+        line.append_text(Text.from_markup(name))
+        line.stylize('dim')
+        line.append('  Done', style='dim')
         _emit(line)
 
 

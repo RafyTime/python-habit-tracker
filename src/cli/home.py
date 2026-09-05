@@ -3,12 +3,13 @@
 import sys
 from collections.abc import Iterator
 from datetime import datetime
+from typing import Annotated
 
 import questionary
 from rich.live import Live
 from rich.panel import Panel
 from sqlmodel import Session
-from typer import Exit
+from typer import Exit, Option
 
 from src.cli import render
 from src.cli.analytics import stats
@@ -83,7 +84,7 @@ def _greeting(display_name: str) -> str:
     return f'Good {period}, {display_name}'
 
 
-def _emit_snapshot() -> None:
+def _emit_snapshot(*, include_done: bool = False) -> None:
     with session_scope() as session:
 
         def factory() -> Iterator[Session]:
@@ -105,6 +106,12 @@ def _emit_snapshot() -> None:
             return
 
         due_habits = habit_service.get_due_habits()
+        due_ids = {habit.id for habit in due_habits}
+        completed_habits = (
+            [habit for habit in active_habits if habit.id not in due_ids]
+            if include_done
+            else []
+        )
         completed_count = len(active_habits) - len(due_habits)
         level, xp_into_level, xp_to_next_level = (
             xp_service.get_level_progress_for_active_profile()
@@ -126,17 +133,36 @@ def _emit_snapshot() -> None:
         due_today = [
             habit for habit in due_habits if habit.periodicity == Periodicity.DAILY
         ]
+        done_today = [
+            habit
+            for habit in completed_habits
+            if habit.periodicity == Periodicity.DAILY
+        ]
         due_this_week = [
             habit for habit in due_habits if habit.periodicity == Periodicity.WEEKLY
         ]
+        done_this_week = [
+            habit
+            for habit in completed_habits
+            if habit.periodicity == Periodicity.WEEKLY
+        ]
+        daily_title = 'Today' if include_done else 'Due today'
+        weekly_title = 'This week' if include_done else 'Due this week'
 
         render.list_section(
-            'Due today',
+            daily_title,
             [render.labelled_habit(habit.name, habit.icon) for habit in due_today],
+            done_names=[
+                render.labelled_habit(habit.name, habit.icon) for habit in done_today
+            ],
         )
         render.list_section(
-            'Due this week',
+            weekly_title,
             [render.labelled_habit(habit.name, habit.icon) for habit in due_this_week],
+            done_names=[
+                render.labelled_habit(habit.name, habit.icon)
+                for habit in done_this_week
+            ],
         )
 
         if not due_habits:
@@ -156,10 +182,15 @@ def _home_panel(*, cursor: int = 0) -> Panel:
     return render.panel(parts)
 
 
-def today() -> None:
+def today(
+    include_done: Annotated[
+        bool,
+        Option('--done', help='Include completed active habits'),
+    ] = False,
+) -> None:
     """Show a snapshot of habits due today and this week."""
     with render.view():
-        _emit_snapshot()
+        _emit_snapshot(include_done=include_done)
 
 
 def home() -> None:

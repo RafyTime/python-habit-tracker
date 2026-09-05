@@ -43,6 +43,7 @@ COMMAND_PANELS = {
     'seed': 'Get started and evaluate',
 }
 COMMAND_OPTIONS = {
+    'today': ('--done',),
     'add': ('--every', '-e', '--icon', '-i'),
     'list': ('--archived', '-a', '--every', '-e'),
     'edit': ('--name', '-n', '--icon', '-i', '--clear-icon', '--archived'),

@@ -1,9 +1,14 @@
 """Pure analytics functions operating on DTOs."""
 
 from collections.abc import Sequence
-from datetime import date
+from datetime import date, datetime
 
-from src.core.analytics.dto import CompletionDTO, HabitDTO, LongestStreakDTO
+from src.core.analytics.dto import (
+    CompletionDTO,
+    CurrentStreakDTO,
+    HabitDTO,
+    LongestStreakDTO,
+)
 from src.core.models import Periodicity
 
 
@@ -112,23 +117,7 @@ def longest_streak_for_habit(
     Returns:
         Length of the longest streak (0 if no completions).
     """
-    # Filter completions for this habit
-    habit_completions = [c for c in completions if c.habit_id == habit.id]
-
-    if not habit_completions:
-        return 0
-
-    # Parse period keys to ordinals and deduplicate
-    period_ordinals = set()
-    for completion in habit_completions:
-        try:
-            ordinal = _parse_period_key_to_ordinal(
-                completion.period_key, habit.periodicity
-            )
-            period_ordinals.add(ordinal)
-        except ValueError, KeyError:
-            # Skip invalid period keys
-            continue
+    period_ordinals = _period_ordinals_for_habit(habit, completions)
 
     if not period_ordinals:
         return 0
@@ -194,3 +183,76 @@ def longest_streak_across_habits(
         habit_name=best_habit.name,
         periodicity=best_habit.periodicity,
     )
+
+
+def _period_ordinals_for_habit(
+    habit: HabitDTO, completions: Sequence[CompletionDTO]
+) -> set[int]:
+    ordinals: set[int] = set()
+    for completion in completions:
+        if completion.habit_id != habit.id:
+            continue
+        try:
+            ordinals.add(
+                _parse_period_key_to_ordinal(completion.period_key, habit.periodicity)
+            )
+        except ValueError, KeyError:
+            continue
+    return ordinals
+
+
+def _period_ordinal_for_datetime(when: datetime, periodicity: Periodicity) -> int:
+    if periodicity == Periodicity.DAILY:
+        return when.date().toordinal()
+    if periodicity == Periodicity.WEEKLY:
+        year, week, _weekday = when.isocalendar()
+        return date.fromisocalendar(year, week, 1).toordinal()
+    raise ValueError(f'Unknown periodicity: {periodicity}')
+
+
+def _count_backwards(start: int, ordinals: set[int], step: int) -> int:
+    length = 0
+    ordinal = start
+    while ordinal in ordinals:
+        length += 1
+        ordinal -= step
+    return length
+
+
+def current_streak_for_habit(
+    habit: HabitDTO,
+    completions: Sequence[CompletionDTO],
+    *,
+    now: datetime,
+) -> CurrentStreakDTO:
+    """
+    Calculate the current streak for one habit relative to ``now``.
+
+    A completed current period counts consecutive periods backward from that
+    period. A due current period stays pending when the preceding period is
+    complete, and is zero when that preceding period was missed.
+    """
+    ordinals = _period_ordinals_for_habit(habit, completions)
+    has_history = bool(ordinals)
+    if not habit.is_active:
+        return CurrentStreakDTO(length=0, pending=False, has_history=has_history)
+
+    current = _period_ordinal_for_datetime(now, habit.periodicity)
+    step = _get_consecutive_step(habit.periodicity)
+
+    if current in ordinals:
+        return CurrentStreakDTO(
+            length=_count_backwards(current, ordinals, step),
+            pending=False,
+            has_history=has_history,
+        )
+
+    preceding = current - step
+    if preceding in ordinals:
+        return CurrentStreakDTO(
+            length=_count_backwards(preceding, ordinals, step),
+            pending=True,
+            has_history=has_history,
+        )
+
+    return CurrentStreakDTO(length=0, pending=False, has_history=has_history)

@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from sqlmodel import Session, select
@@ -5,7 +6,7 @@ from typer.testing import CliRunner
 
 from main import app
 from src.cli import render
-from src.core.models import Habit, Periodicity, Profile
+from src.core.models import Completion, Habit, Periodicity, Profile
 
 runner = CliRunner()
 
@@ -72,7 +73,7 @@ def test_list_prioritizes_name_repetition_and_status_over_timestamps(
     assert result.exit_code == 0
     assert 'Read 10 Pages' in result.stdout
     assert 'Daily' in result.stdout
-    assert 'Active' in result.stdout
+    assert 'Due' in result.stdout
     assert 'Created' not in result.stdout
     assert 'created_at' not in result.stdout
 
@@ -391,3 +392,147 @@ def test_interactive_add_prompts_for_missing_name_and_repetition(
     assert habit is not None
     assert habit.periodicity == Periodicity.DAILY
     assert habit.icon is None
+
+
+_LIST_COLUMNS = ('ID', 'Habit', 'Progress', 'Streak', 'Repetition')
+
+
+def _header_line(output: str) -> str:
+    return next(
+        line
+        for line in output.splitlines()
+        if all(column in line for column in _LIST_COLUMNS)
+    )
+
+
+def test_list_shows_id_habit_progress_streak_and_repetition_in_that_order(
+    session: Session, active_profile: Profile
+) -> None:
+    created = _invoke(['add', 'Read 10 Pages', '--every', 'daily'])
+    assert created.exit_code == 0
+    habit = session.exec(select(Habit).where(Habit.name == 'Read 10 Pages')).one()
+
+    result = _invoke(['list'])
+
+    assert result.exit_code == 0
+    header = _header_line(result.stdout)
+    positions = [header.index(column) for column in _LIST_COLUMNS]
+    assert positions == sorted(positions)
+    assert str(habit.id) in result.stdout
+    assert 'Read 10 Pages' in result.stdout
+    assert 'Due' in result.stdout
+    assert 'Daily' in result.stdout
+    assert '—' in result.stdout
+
+
+def test_list_shows_done_progress_and_a_completed_current_streak(
+    session: Session, active_profile: Profile
+) -> None:
+    assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
+    habit = session.exec(select(Habit)).one()
+    today = datetime.now()
+    yesterday = today - timedelta(days=1)
+    session.add_all(
+        [
+            Completion(
+                habit_id=habit.id,
+                completed_at=yesterday,
+                period_key=yesterday.date().isoformat(),
+            ),
+            Completion(
+                habit_id=habit.id,
+                completed_at=today,
+                period_key=today.date().isoformat(),
+            ),
+        ]
+    )
+    session.commit()
+
+    result = _invoke(['list'])
+
+    assert result.exit_code == 0
+    assert 'Done' in result.stdout
+    assert 'Due' not in result.stdout
+    assert '2' in result.stdout
+    assert 'Broken' not in result.stdout
+
+
+def test_list_shows_due_progress_and_a_pending_current_streak(
+    session: Session, active_profile: Profile
+) -> None:
+    assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
+    habit = session.exec(select(Habit)).one()
+    now = datetime.now()
+    session.add_all(
+        [
+            Completion(
+                habit_id=habit.id,
+                completed_at=now - timedelta(days=2),
+                period_key=(now - timedelta(days=2)).date().isoformat(),
+            ),
+            Completion(
+                habit_id=habit.id,
+                completed_at=now - timedelta(days=1),
+                period_key=(now - timedelta(days=1)).date().isoformat(),
+            ),
+        ]
+    )
+    session.commit()
+
+    result = _invoke(['list'])
+
+    assert result.exit_code == 0
+    assert 'Due' in result.stdout
+    assert 'Done' not in result.stdout
+    assert '2' in result.stdout
+    assert 'Broken' not in result.stdout
+
+
+def test_list_marks_a_broken_current_streak_without_hiding_due_progress(
+    session: Session, active_profile: Profile
+) -> None:
+    assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
+    habit = session.exec(select(Habit)).one()
+    missed_gap = datetime.now() - timedelta(days=2)
+    session.add(
+        Completion(
+            habit_id=habit.id,
+            completed_at=missed_gap,
+            period_key=missed_gap.date().isoformat(),
+        )
+    )
+    session.commit()
+
+    result = _invoke(['list'])
+
+    assert result.exit_code == 0
+    assert 'Due' in result.stdout
+    assert 'Broken' in result.stdout
+
+
+def test_list_archived_row_shows_archived_progress_and_no_current_streak(
+    session: Session, active_profile: Profile
+) -> None:
+    assert _invoke(['add', 'Paused Habit', '--every', 'weekly']).exit_code == 0
+    habit = session.exec(select(Habit)).one()
+    yesterday = datetime.now() - timedelta(days=1)
+    session.add(
+        Completion(
+            habit_id=habit.id,
+            completed_at=yesterday,
+            period_key=yesterday.date().isoformat(),
+        )
+    )
+    habit.is_active = False
+    session.add(habit)
+    session.commit()
+
+    result = _invoke(['list', '--archived'])
+
+    assert result.exit_code == 0
+    assert 'Paused Habit' in result.stdout
+    assert 'Archived' in result.stdout
+    assert 'Due' not in result.stdout
+    assert 'Done' not in result.stdout
+    assert 'Broken' not in result.stdout
+    assert '—' in result.stdout

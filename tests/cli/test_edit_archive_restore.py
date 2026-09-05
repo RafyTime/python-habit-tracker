@@ -379,7 +379,7 @@ def test_restore_returns_the_same_habit_history_and_xp(
     assert session.get(XPEvent, xp_id) is not None
     listed = _invoke(['list'])
     assert 'Read 10 Pages' in listed.stdout
-    assert 'Active' in listed.stdout
+    assert 'Done' in listed.stdout
 
 
 def test_restore_by_id_puts_the_habit_back_on_today(

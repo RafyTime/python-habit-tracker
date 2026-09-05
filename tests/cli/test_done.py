@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -38,6 +39,30 @@ def test_done_by_id_persists_completion_and_shows_restrained_feedback(
     ).first()
     assert completion is not None
     assert habit.name == 'Read 10 Pages'
+
+
+def test_done_feedback_reports_current_streak_not_longest_streak(
+    session: Session, active_profile: Profile
+) -> None:
+    assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
+    habit = session.exec(select(Habit)).one()
+    now = datetime.now()
+    for days_ago in (5, 4, 3):
+        day = now - timedelta(days=days_ago)
+        session.add(
+            Completion(
+                habit_id=habit.id,
+                completed_at=day,
+                period_key=day.date().isoformat(),
+            )
+        )
+    session.commit()
+
+    result = _invoke(['done', 'Read 10 Pages'])
+
+    assert result.exit_code == 0
+    assert '1-day streak' in result.stdout
+    assert '3-day streak' not in result.stdout
 
 
 def test_done_by_name_is_case_insensitive_and_keeps_the_display_name(
