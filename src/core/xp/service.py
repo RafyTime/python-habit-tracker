@@ -178,6 +178,19 @@ class XPService:
 
         return (level, xp_into_level, xp_to_next_level)
 
+    def get_total_xp_for_habit(self, habit_id: int) -> int:
+        """Return retained XP earned by one habit for the active profile."""
+        session = self._get_session()
+        profile = self._get_active_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Active profile')
+        result = session.exec(
+            select(func.sum(XPEvent.amount)).where(
+                XPEvent.profile_id == profile_id,
+                XPEvent.habit_id == habit_id,
+            )
+        ).one()
+        return int(result) if result is not None else 0
+
     def get_total_xp_for_active_profile(self) -> int:
         """
         Convenience method to get total XP for the active profile.

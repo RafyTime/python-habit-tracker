@@ -16,6 +16,7 @@ from src.core.analytics import (
 from src.core.db import get_session
 from src.core.habit import HabitNotFound, HabitService
 from src.core.models import Completion, Habit, Periodicity, require_persisted_id
+from src.core.xp import XPService
 
 
 def _habit_to_dto(habit: Habit) -> HabitDTO:
@@ -92,6 +93,13 @@ def _habit_streak_detail(habit: Habit, completions: list[Completion]) -> str:
     )
 
 
+def _latest_completion_label(completions: list[Completion]) -> str:
+    if not completions:
+        return 'Never completed'
+    latest = max(completions, key=lambda item: item.completed_at)
+    return latest.completed_at.strftime('%Y-%m-%d')
+
+
 def _repetition_label(periodicity: Periodicity) -> str:
     return 'Daily' if periodicity == Periodicity.DAILY else 'Weekly'
 
@@ -126,17 +134,19 @@ def stats(
             raise Exit(1)
         habit_id = require_persisted_id(habit.id, 'Habit')
         completions = service.list_completions(habit_ids=[habit_id])
+        xp_earned = XPService(get_session).get_total_xp_for_habit(habit_id)
+        rows = [
+            ('Repetition', _repetition_label(habit.periodicity)),
+            ('Status', 'Active' if habit.is_active else 'Archived'),
+            ('Completions', _count_label(len(completions), 'completion')),
+            ('Longest streak', _habit_streak_detail(habit, completions)),
+            ('XP earned', str(xp_earned)),
+            ('Latest completion', _latest_completion_label(completions)),
+        ]
         with render.view():
             render.heading(render.labelled_habit(habit.name, habit.icon))
             render.blank()
-            render.stats(
-                [
-                    ('Repetition', _repetition_label(habit.periodicity)),
-                    ('Status', 'Active' if habit.is_active else 'Archived'),
-                    ('Completions', _count_label(len(completions), 'completion')),
-                    ('Longest streak', _habit_streak_detail(habit, completions)),
-                ]
-            )
+            render.stats(rows)
             if archived or not completions:
                 render.blank()
                 _label_archived_history(archived)
