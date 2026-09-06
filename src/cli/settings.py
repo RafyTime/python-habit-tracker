@@ -9,6 +9,7 @@ from src.core.db import get_session
 from src.core.models import AfterAction, Profile
 from src.core.profile import ProfileService
 
+_SETTINGS_ICON = '⚙️'
 _AFTER_ACTION_VALUES = {
     'home': AfterAction.HOME,
     'exit': AfterAction.EXIT,
@@ -16,7 +17,7 @@ _AFTER_ACTION_VALUES = {
 
 
 def _after_action_label(after_action: AfterAction) -> str:
-    return 'Return home' if after_action == AfterAction.HOME else 'Exit'
+    return 'Return home' if after_action == AfterAction.HOME else 'Exit immediately'
 
 
 def _parse_after_action(value: str) -> AfterAction | None:
@@ -25,7 +26,7 @@ def _parse_after_action(value: str) -> AfterAction | None:
 
 def _show_profile(profile: Profile) -> None:
     with render.view():
-        render.heading('Settings')
+        render.heading('Settings', symbol=_SETTINGS_ICON)
         render.blank()
         render.stats(
             [
@@ -66,7 +67,10 @@ def settings(
     ] = None,
     after_action: Annotated[
         str | None,
-        Option('--after-action', help='Return home or exit after a home action'),
+        Option(
+            '--after-action',
+            help='Return home or exit immediately after a home action',
+        ),
     ] = None,
 ) -> None:
     """View and update profile settings."""

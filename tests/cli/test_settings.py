@@ -49,12 +49,12 @@ def test_settings_updates_name_and_after_action_without_prompts(
     assert profile.username == 'Alex'
     assert profile.after_action == AfterAction.EXIT
     assert 'Alex' in result.stdout
-    assert 'Exit' in result.stdout
+    assert 'Exit immediately' in result.stdout
 
     shown = _invoke(['settings'])
     assert shown.exit_code == 0
     assert 'Alex' in shown.stdout
-    assert 'Exit' in shown.stdout
+    assert 'Exit immediately' in shown.stdout
     assert 'Return home' not in shown.stdout
 
 

@@ -350,11 +350,11 @@ def test_home_settings_can_change_after_action_behavior(
     session.refresh(active_profile)
     assert active_profile.username == 'testuser'
     assert active_profile.after_action == AfterAction.EXIT
-    assert 'Exit' in result.stdout
+    assert 'Exit immediately' in result.stdout
     after_titles = [
         choice.title for choice in mock_select_obj.call_args_list[1].kwargs['choices']
     ]
-    assert after_titles == ['Return home', 'Exit']
+    assert after_titles == ['Return home', 'Exit immediately']
 
 
 def test_cancelling_settings_editor_leaves_values_unchanged(

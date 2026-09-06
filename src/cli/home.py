@@ -22,6 +22,11 @@ from src.core.models import AfterAction, Periodicity
 from src.core.profile import ProfileService
 from src.core.xp import XPService
 
+_GREETING_ICONS = {
+    'morning': '☀️',
+    'afternoon': '🌤️',
+    'evening': '🌙',
+}
 _HOME_ACTIONS = (
     ('done', 'Mark a habit done', done),
     ('add', 'Add a habit', add),
@@ -75,7 +80,7 @@ def _live_choose() -> str | None:
             live.update(_home_panel(cursor=cursor), refresh=True)
 
 
-def _greeting(display_name: str) -> str:
+def _greeting(display_name: str) -> tuple[str, str]:
     hour = datetime.now().hour
     if hour < 12:
         period = 'morning'
@@ -83,7 +88,7 @@ def _greeting(display_name: str) -> str:
         period = 'afternoon'
     else:
         period = 'evening'
-    return f'Good {period}, {display_name}'
+    return _GREETING_ICONS[period], f'Good {period}, {display_name}'
 
 
 def _emit_snapshot(*, include_done: bool = False) -> None:
@@ -99,7 +104,8 @@ def _emit_snapshot(*, include_done: bool = False) -> None:
         profile = profile_service.ensure_single_profile()
         active_habits = habit_service.list_habits(active_only=True)
 
-        render.heading(_greeting(profile.username))
+        symbol, title = _greeting(profile.username)
+        render.heading(title, symbol=symbol)
         render.blank()
 
         if not active_habits:

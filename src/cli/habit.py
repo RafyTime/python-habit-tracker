@@ -21,6 +21,7 @@ from src.core.habit import (
 from src.core.models import Completion, Habit, Periodicity, require_persisted_id
 from src.core.xp import XPService
 
+_LIST_ICON = '☰'
 _REPETITION_ALIASES = {
     'day': Periodicity.DAILY,
     'daily': Periodicity.DAILY,
@@ -158,7 +159,7 @@ def _prompt_icon(
         questionary.Choice(title=f'{icon}  {label}', value=icon)
         for icon, label in _SUGGESTED_ICONS
     )
-    choices.append(questionary.Choice(title='Custom symbol', value=_CUSTOM_ICON))
+    choices.append(questionary.Choice(title='Custom Icon', value=_CUSTOM_ICON))
     if allow_clear:
         choices.append(questionary.Choice(title='Clear Icon', value=_CLEAR_ICON))
     else:
@@ -181,7 +182,7 @@ def _prompt_icon(
         return selected
 
     render.before_prompts()
-    custom = Prompt.ask('Custom symbol').strip()
+    custom = Prompt.ask('Custom Icon').strip()
     if not custom:
         if allow_keep:
             raise Exit()
@@ -339,7 +340,7 @@ def show_habits(
             )
         ]
 
-        render.heading('Habits')
+        render.heading('Habits', symbol=_LIST_ICON)
         rows = []
         row_styles: list[str | None] = []
         for habit in habits:

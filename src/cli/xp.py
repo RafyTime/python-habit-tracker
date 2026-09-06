@@ -7,6 +7,9 @@ from src.core.db import get_session
 from src.core.habit.service import HabitService
 from src.core.xp import XPService
 
+_XP_ICON = '✨'
+_HISTORY_ICON = '▤'
+
 
 def _reason_label(reason: str) -> str:
     if reason == 'HABIT_COMPLETION':
@@ -30,7 +33,7 @@ def show_xp(
     )
     xp_for_level = xp_into_level + xp_to_next_level
     with render.view():
-        render.heading('XP')
+        render.heading('XP', symbol=_XP_ICON)
         render.blank()
         render.stats(
             [
@@ -47,7 +50,7 @@ def show_xp(
         if history:
             events = service.list_recent_events_for_active_profile(limit)
             render.blank()
-            render.heading('History')
+            render.heading('History', symbol=_HISTORY_ICON)
             if events:
                 habits = HabitService(get_session).list_habits(active_only=False)
                 names = {habit.id: habit.name for habit in habits}

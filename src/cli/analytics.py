@@ -18,6 +18,8 @@ from src.core.habit import HabitNotFound, HabitService
 from src.core.models import Completion, Habit, Periodicity, require_persisted_id
 from src.core.xp import XPService
 
+_STATS_ICON = '📊'
+
 
 def _habit_to_dto(habit: Habit) -> HabitDTO:
     """Convert Habit ORM model to HabitDTO."""
@@ -173,7 +175,7 @@ def stats(
         completions = service.list_completions(habit_ids=habit_ids)
         daily = len(filter_habits_by_periodicity(habits, Periodicity.DAILY))
         weekly = len(filter_habits_by_periodicity(habits, Periodicity.WEEKLY))
-        render.heading('Stats')
+        render.heading('Stats', symbol=_STATS_ICON)
         render.blank()
         render.stats(
             [

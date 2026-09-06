@@ -69,7 +69,7 @@ def test_edit_replaces_an_icon(session: Session, active_profile: Profile) -> Non
     titles = [choice.title for choice in mock_select_obj.call_args.kwargs['choices']]
     assert any(title.startswith('Keep current Icon') for title in titles)
     assert 'Clear Icon' in titles
-    assert 'Custom symbol' in titles
+    assert 'Custom Icon' in titles
     assert 'Read 10 Pages' in mock_select_obj.call_args.args[0]
     assert result.exit_code == 0
     habit = session.exec(select(Habit)).one()

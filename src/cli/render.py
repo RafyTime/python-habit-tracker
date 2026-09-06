@@ -23,15 +23,6 @@ select_style = questionary.Style(
     ]
 )
 
-_HEADING_SYMBOLS = {
-    'Habits': '☰',
-    'Settings': '⚙',
-    'Stats': '◈',
-    'XP': '✦',
-    'History': '▤',
-    'Quick start': '▸',
-}
-
 _BAR_WIDTH = 8
 DEFAULT_HABIT_ICON = '🔷'
 _buffer: list[RenderableType] | None = None
@@ -106,10 +97,9 @@ def before_prompts() -> None:
 
 
 def heading(text: str, *, symbol: str | None = None) -> None:
-    mark = _HEADING_SYMBOLS.get(text, '◆') if symbol is None else symbol
     line = Text()
-    if mark:
-        line.append(f'{mark} ', style='bold cyan')
+    if symbol:
+        line.append(f'{symbol} ', style='bold cyan')
     line.append_text(Text.from_markup(text, style='bold'))
     _emit(line)
 

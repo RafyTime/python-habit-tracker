@@ -65,7 +65,7 @@ def test_personal_quick_start_sets_name_creates_habit_and_records_one_completion
         choice.title for choice in habit_select_obj.call_args_list[1].kwargs['choices']
     ]
     assert any('📚' in title for title in icon_titles)
-    assert any('custom' in title.lower() for title in icon_titles)
+    assert any(title == 'Custom Icon' for title in icon_titles)
     assert any(title == 'No Icon' for title in icon_titles)
 
     profile = session.exec(select(Profile)).one()

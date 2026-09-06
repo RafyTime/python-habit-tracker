@@ -15,6 +15,7 @@ from src.core.habit import HabitService
 from src.core.models import Habit, Periodicity
 from src.core.profile import ProfileService
 
+_QUICK_START_ICON = '▶️'
 USER_GUIDE_URL = (
     'https://github.com/RafyTime/python-habit-tracker/blob/main/docs/USER_GUIDE.md'
 )
@@ -68,7 +69,7 @@ def _run_start() -> None:
     profile = profile_service.ensure_single_profile()
 
     with render.view():
-        render.heading('Quick start')
+        render.heading('Quick start', symbol=_QUICK_START_ICON)
         render.note('A short tour of the main habit loop.')
 
     name = _ask_display_name(profile.username)

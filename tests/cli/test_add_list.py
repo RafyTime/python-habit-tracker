@@ -130,12 +130,12 @@ def test_add_icon_flag_stores_a_suggested_icon_beside_the_name(
     curated = [
         title
         for title in titles
-        if title not in {'Custom symbol', 'No Icon'}
+        if title not in {'Custom Icon', 'No Icon'}
         and not title.startswith('Keep')
         and not title.startswith('Clear')
     ]
     assert 8 <= len(curated) <= 12
-    assert 'Custom symbol' in titles
+    assert 'Custom Icon' in titles
     assert 'No Icon' in titles
     assert any('Reading' in title for title in titles)
     assert mock_select_obj.call_args.args[0] == 'Choose an Icon for Read 10 Pages:'
@@ -166,10 +166,10 @@ def test_interactive_add_can_choose_a_suggested_icon(
 
     icon_choices = mock_select_obj.call_args_list[1].kwargs['choices']
     titles = [choice.title for choice in icon_choices]
-    curated = [title for title in titles if title not in {'Custom symbol', 'No Icon'}]
+    curated = [title for title in titles if title not in {'Custom Icon', 'No Icon'}]
     assert 8 <= len(curated) <= 12
     assert any('Reading' in title for title in titles)
-    assert 'Custom symbol' in titles
+    assert 'Custom Icon' in titles
     assert 'No Icon' in titles
     assert result.exit_code == 0
     habit = session.exec(select(Habit).where(Habit.name == 'Read 10 Pages')).first()

@@ -44,6 +44,28 @@ def test_today_greets_the_display_name(
     assert 'Alex' in result.stdout
 
 
+def test_today_greeting_follows_local_time_of_day(
+    session: Session, active_profile: Profile
+) -> None:
+    active_profile.username = 'Alex'
+    session.add(active_profile)
+    session.commit()
+
+    morning = datetime(2026, 9, 6, 8, 0, 0)
+    evening = datetime(2026, 9, 6, 20, 0, 0)
+    with patch('src.cli.home.datetime') as mock_dt:
+        mock_dt.now.return_value = morning
+        morning_result = _run_today(session)
+    with patch('src.cli.home.datetime') as mock_dt:
+        mock_dt.now.return_value = evening
+        evening_result = _run_today(session)
+
+    assert morning_result.exit_code == 0
+    assert 'Good morning, Alex' in morning_result.stdout
+    assert evening_result.exit_code == 0
+    assert 'Good evening, Alex' in evening_result.stdout
+
+
 def test_today_distinguishes_habits_due_today_from_habits_due_this_week(
     session: Session, active_profile: Profile
 ) -> None:
