@@ -24,7 +24,7 @@
 
 - [x] [05j - Show accurate current progress](05j-accurate-current-progress.md)
 - [x] [05k - Add focused Habit Stats details](05k-focused-habit-stats.md)
-- [ ] [05l - Polish interactive presentation and editing](05l-polished-interactive-presentation.md)
+- [x] [05l - Polish interactive presentation and editing](05l-polished-interactive-presentation.md)
 - [ ] [05m - Teach the Habit journey in Quick start](05m-teach-the-habit-journey.md)
 
 ## Completion criteria

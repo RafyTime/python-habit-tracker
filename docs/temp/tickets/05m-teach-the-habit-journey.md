@@ -22,4 +22,3 @@
 - [ ] Cancelling a choice keeps previously completed actions, returns or exits cleanly, and never resets data.
 - [ ] Ctrl+C exits without an application traceback.
 - [ ] Root CLI journey tests cover personal setup, Sample data, existing data, no Due Habits, first Completion, focused Stats, command teaching, cancellation, home entry, exit, and the guide URL.
-
