@@ -3,6 +3,7 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 
+import questionary
 from rich import box
 from rich.console import Console, Group, NewLine, RenderableType
 from rich.panel import Panel
@@ -10,6 +11,26 @@ from rich.table import Table
 from rich.text import Text
 
 console = Console(highlight=False)
+
+select_style = questionary.Style(
+    [
+        ('qmark', 'fg:cyan bold'),
+        ('question', 'bold'),
+        ('answer', 'fg:cyan'),
+        ('pointer', 'fg:cyan bold'),
+        ('highlighted', 'fg:cyan bold'),
+        ('selected', 'fg:cyan'),
+    ]
+)
+
+_HEADING_SYMBOLS = {
+    'Habits': '☰',
+    'Settings': '⚙',
+    'Stats': '◈',
+    'XP': '✦',
+    'History': '▤',
+    'Quick start': '▸',
+}
 
 _BAR_WIDTH = 8
 DEFAULT_HABIT_ICON = '🔷'
@@ -79,8 +100,18 @@ def blank() -> None:
     _emit(NewLine())
 
 
-def heading(text: str) -> None:
-    _emit(Text.from_markup(text, style='bold'))
+def before_prompts() -> None:
+    """Separate a prompt group from the output above it."""
+    console.print()
+
+
+def heading(text: str, *, symbol: str | None = None) -> None:
+    mark = _HEADING_SYMBOLS.get(text, '◆') if symbol is None else symbol
+    line = Text()
+    if mark:
+        line.append(f'{mark} ', style='bold cyan')
+    line.append_text(Text.from_markup(text, style='bold'))
+    _emit(line)
 
 
 def bar(completed: int, total: int) -> str:

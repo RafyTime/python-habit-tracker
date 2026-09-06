@@ -44,6 +44,7 @@ def test_xp_shows_total_level_and_progress(
 
     assert result.exit_code == 0
     output = result.stdout
+    assert 'XP' in output
     assert '2' in output
     assert 'Level' in output
     assert '1' in output

@@ -66,7 +66,7 @@ def test_personal_quick_start_sets_name_creates_habit_and_records_one_completion
     ]
     assert any('📚' in title for title in icon_titles)
     assert any('custom' in title.lower() for title in icon_titles)
-    assert any(title == 'No icon' for title in icon_titles)
+    assert any(title == 'No Icon' for title in icon_titles)
 
     profile = session.exec(select(Profile)).one()
     assert profile.username == 'Alex'

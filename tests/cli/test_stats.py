@@ -5,7 +5,6 @@ from sqlmodel import Session, select
 from typer.testing import CliRunner
 
 from main import app
-from src.cli import render
 from src.core.models import Completion, Habit, Profile, XPEvent
 
 runner = CliRunner()
@@ -76,6 +75,7 @@ def test_stats_shows_active_daily_weekly_and_completion_counts(
 
     assert result.exit_code == 0
     output = result.stdout
+    assert 'Stats' in output
     assert 'Daily habits' in output
     assert 'Weekly habits' in output
     assert '2' in output
@@ -179,7 +179,6 @@ def test_stats_for_one_habit_shows_repetition_status_completions_and_streak(
     assert 'Completions' in output
     assert 'Longest streak' in output
     assert 'Gym Session' not in output
-    assert render.DEFAULT_HABIT_ICON in output
     assert '[dim]' not in output
 
 

@@ -4,6 +4,8 @@ from sqlmodel import Session, select
 from typer.testing import CliRunner
 
 from main import app
+from src.core import db
+from src.core.habit import HabitService
 from src.core.models import Completion, Habit, Periodicity, Profile, XPEvent
 
 runner = CliRunner()
@@ -15,11 +17,13 @@ def _invoke(args: list[str], **kwargs):
 
 
 def _add_daily(name: str, *, icon: str | None = None) -> None:
-    args = ['add', name, '--every', 'daily']
-    if icon is not None:
-        args.extend(['--icon', icon])
-    created = _invoke(args)
+    created = _invoke(['add', name, '--every', 'daily'])
     assert created.exit_code == 0
+    if icon is None:
+        return
+    service = HabitService(db.get_session)
+    habit = service.get_habit(name)
+    service.update_habit(habit.id, icon=icon)
 
 
 def test_edit_renames_a_habit_by_id_and_keeps_periodicity(
@@ -54,8 +58,19 @@ def test_edit_renames_a_habit_by_normalized_name(
 def test_edit_replaces_an_icon(session: Session, active_profile: Profile) -> None:
     _add_daily('Read 10 Pages', icon='📚')
 
-    result = _invoke(['edit', 'Read 10 Pages', '--icon', '📖'])
+    mock_select = patch('src.cli.habit.questionary.select')
+    with (
+        patch('src.cli.habit._can_prompt', return_value=True),
+        mock_select as mock_select_obj,
+    ):
+        mock_select_obj.return_value.ask.return_value = '📖'
+        result = _invoke(['edit', 'Read 10 Pages', '--icon'])
 
+    titles = [choice.title for choice in mock_select_obj.call_args.kwargs['choices']]
+    assert any(title.startswith('Keep current Icon') for title in titles)
+    assert 'Clear Icon' in titles
+    assert 'Custom symbol' in titles
+    assert 'Read 10 Pages' in mock_select_obj.call_args.args[0]
     assert result.exit_code == 0
     habit = session.exec(select(Habit)).one()
     assert habit.icon == '📖'
@@ -83,12 +98,24 @@ def test_edit_rejects_replacement_and_clear_icon_together(
 ) -> None:
     _add_daily('Read 10 Pages', icon='📚')
 
-    result = _invoke(['edit', 'Read 10 Pages', '--icon', '📖', '--clear-icon'])
+    result = _invoke(['edit', 'Read 10 Pages', '--icon', '--clear-icon'])
 
     assert result.exit_code == 1
     output = result.stdout.lower()
     assert 'clear' in output
     assert 'icon' in output
+    habit = session.exec(select(Habit)).one()
+    assert habit.icon == '📚'
+
+
+def test_edit_does_not_accept_an_inline_icon_value(
+    session: Session, active_profile: Profile
+) -> None:
+    _add_daily('Read 10 Pages', icon='📚')
+
+    result = _invoke(['edit', 'Read 10 Pages', '--icon', '📖'])
+
+    assert result.exit_code != 0
     habit = session.exec(select(Habit)).one()
     assert habit.icon == '📚'
 
@@ -205,7 +232,7 @@ def test_interactive_edit_opens_an_active_habit_picker(
     assert gym.name == 'Evening Gym'
 
 
-def test_interactive_edit_prompts_for_a_new_name_when_options_are_omitted(
+def test_interactive_edit_opens_an_action_menu_instead_of_renaming(
     session: Session, active_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
@@ -214,27 +241,179 @@ def test_interactive_edit_prompts_for_a_new_name_when_options_are_omitted(
     mock_select = patch('src.cli.habit.questionary.select')
     with (
         patch('src.cli.habit._can_prompt', return_value=True),
+        patch('src.cli.habit.Prompt.ask') as mock_ask,
+        mock_select as mock_select_obj,
+    ):
+        mock_select_obj.return_value.ask.side_effect = [habit.id, 'back']
+        result = _invoke(['edit'])
+
+    mock_ask.assert_not_called()
+    assert result.exit_code == 0
+    session.refresh(habit)
+    assert habit.name == 'Read 10 Pages'
+    titles = [choice.title for choice in mock_select_obj.call_args.kwargs['choices']]
+    assert titles == [
+        'Change name',
+        'Change Icon',
+        'Clear Icon',
+        'Back',
+    ]
+
+
+def test_interactive_edit_can_change_the_name_from_the_action_menu(
+    session: Session, active_profile: Profile
+) -> None:
+    _add_daily('Read 10 Pages', icon='📚')
+    habit = session.exec(select(Habit)).one()
+
+    mock_select = patch('src.cli.habit.questionary.select')
+    with (
+        patch('src.cli.habit._can_prompt', return_value=True),
         patch('src.cli.habit.Prompt.ask', return_value='Read 20 Pages'),
         mock_select as mock_select_obj,
     ):
-        mock_select_obj.return_value.ask.return_value = habit.id
+        mock_select_obj.return_value.ask.side_effect = [habit.id, 'name']
         result = _invoke(['edit'])
 
     assert result.exit_code == 0
     session.refresh(habit)
     assert habit.name == 'Read 20 Pages'
+    assert habit.icon == '📚'
 
 
-def test_edit_does_not_treat_an_empty_icon_as_a_clear(
+def test_interactive_edit_can_change_the_icon_from_the_action_menu(
+    session: Session, active_profile: Profile
+) -> None:
+    _add_daily('Read 10 Pages', icon='📚')
+    habit = session.exec(select(Habit)).one()
+
+    mock_select = patch('src.cli.habit.questionary.select')
+    with (
+        patch('src.cli.habit._can_prompt', return_value=True),
+        mock_select as mock_select_obj,
+    ):
+        mock_select_obj.return_value.ask.side_effect = [habit.id, 'icon', '📖']
+        result = _invoke(['edit'])
+
+    assert result.exit_code == 0
+    session.refresh(habit)
+    assert habit.name == 'Read 10 Pages'
+    assert habit.icon == '📖'
+
+
+def test_interactive_edit_can_clear_the_icon_from_the_action_menu(
+    session: Session, active_profile: Profile
+) -> None:
+    _add_daily('Read 10 Pages', icon='📚')
+    habit = session.exec(select(Habit)).one()
+
+    mock_select = patch('src.cli.habit.questionary.select')
+    with (
+        patch('src.cli.habit._can_prompt', return_value=True),
+        mock_select as mock_select_obj,
+    ):
+        mock_select_obj.return_value.ask.side_effect = [habit.id, 'clear']
+        result = _invoke(['edit'])
+
+    assert result.exit_code == 0
+    session.refresh(habit)
+    assert habit.name == 'Read 10 Pages'
+    assert habit.icon is None
+
+
+def test_edit_icon_picker_can_keep_the_current_icon(
     session: Session, active_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages', icon='📚')
 
-    result = _invoke(['edit', 'Read 10 Pages', '--icon', ''])
+    mock_select = patch('src.cli.habit.questionary.select')
+    with (
+        patch('src.cli.habit._can_prompt', return_value=True),
+        mock_select as mock_select_obj,
+    ):
+        mock_select_obj.return_value.ask.return_value = '__keep__'
+        result = _invoke(['edit', 'Read 10 Pages', '--icon'])
 
-    assert result.exit_code == 1
+    assert result.exit_code == 0
     habit = session.exec(select(Habit)).one()
     assert habit.icon == '📚'
+    assert habit.name == 'Read 10 Pages'
+    assert 'Read 10 Pages' in result.stdout
+    assert '📚' in result.stdout
+
+
+def test_edit_icon_picker_can_clear_the_icon(
+    session: Session, active_profile: Profile
+) -> None:
+    _add_daily('Read 10 Pages', icon='📚')
+
+    mock_select = patch('src.cli.habit.questionary.select')
+    with (
+        patch('src.cli.habit._can_prompt', return_value=True),
+        mock_select as mock_select_obj,
+    ):
+        mock_select_obj.return_value.ask.return_value = '__clear__'
+        result = _invoke(['edit', 'Read 10 Pages', '--icon'])
+
+    assert result.exit_code == 0
+    habit = session.exec(select(Habit)).one()
+    assert habit.icon is None
+    assert habit.name == 'Read 10 Pages'
+
+
+def test_edit_icon_picker_can_enter_a_custom_symbol(
+    session: Session, active_profile: Profile
+) -> None:
+    _add_daily('Read 10 Pages', icon='📚')
+
+    mock_select = patch('src.cli.habit.questionary.select')
+    with (
+        patch('src.cli.habit._can_prompt', return_value=True),
+        patch('src.cli.habit.Prompt.ask', return_value='★'),
+        mock_select as mock_select_obj,
+    ):
+        mock_select_obj.return_value.ask.return_value = '__custom__'
+        result = _invoke(['edit', 'Read 10 Pages', '--icon'])
+
+    assert result.exit_code == 0
+    habit = session.exec(select(Habit)).one()
+    assert habit.icon == '★'
+    assert habit.name == 'Read 10 Pages'
+
+
+def test_edit_icon_picker_cancel_does_not_change_the_habit(
+    session: Session, active_profile: Profile
+) -> None:
+    _add_daily('Read 10 Pages', icon='📚')
+
+    mock_select = patch('src.cli.habit.questionary.select')
+    with (
+        patch('src.cli.habit._can_prompt', return_value=True),
+        mock_select as mock_select_obj,
+    ):
+        mock_select_obj.return_value.ask.return_value = None
+        result = _invoke(['edit', 'Read 10 Pages', '--icon'])
+
+    assert result.exit_code == 0
+    habit = session.exec(select(Habit)).one()
+    assert habit.icon == '📚'
+    assert habit.name == 'Read 10 Pages'
+
+
+def test_edit_icon_flag_without_a_terminal_fails_and_keeps_the_habit(
+    session: Session, active_profile: Profile
+) -> None:
+    _add_daily('Read 10 Pages', icon='📚')
+
+    result = _invoke(['edit', 'Read 10 Pages', '--icon'])
+
+    assert result.exit_code == 1
+    output = result.stdout.lower()
+    assert 'icon' in output
+    assert 'interactive' in output
+    habit = session.exec(select(Habit)).one()
+    assert habit.icon == '📚'
+    assert habit.name == 'Read 10 Pages'
 
 
 def test_interactive_edit_cancel_does_not_change_the_habit(

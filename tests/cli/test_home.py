@@ -275,28 +275,86 @@ def test_home_add_uses_the_same_persisted_behavior(
     assert 'Morning Walk' in snapshots[-1]
 
 
-def test_home_settings_editor_updates_the_same_values(
+def test_home_settings_shows_current_values_before_offering_changes(
     session: Session, active_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.settings.questionary.select')
-    choose = patch('src.cli.home._choose_action', side_effect=['settings', 'done'])
     with (
         patch('src.cli.home._can_prompt', return_value=True),
-        choose as choose_action,
-        patch('src.cli.settings.Prompt.ask', return_value='Alex'),
+        patch('src.cli.home._choose_action', side_effect=['settings', 'exit']),
+        patch('src.cli.settings.Prompt.ask') as mock_ask,
         mock_select as mock_select_obj,
     ):
-        mock_select_obj.return_value.unsafe_ask.return_value = AfterAction.EXIT
+        mock_select_obj.return_value.unsafe_ask.return_value = 'back'
         result = _invoke_home()
 
     assert result.exit_code == 0
-    assert choose_action.call_count == 1
+    assert 'Settings' in result.stdout
+    assert 'Display name' in result.stdout
+    assert 'testuser' in result.stdout
+    assert 'After an action' in result.stdout
+    assert 'Return home' in result.stdout
+    mock_ask.assert_not_called()
+    session.refresh(active_profile)
+    assert active_profile.username == 'testuser'
+    assert active_profile.after_action == AfterAction.HOME
+    assert mock_select_obj.call_args.args[0] == 'What would you like to change?'
+    assert 'style' in mock_select_obj.call_args.kwargs
+    titles = [choice.title for choice in mock_select_obj.call_args.kwargs['choices']]
+    assert titles == [
+        'Change display name',
+        'Change after-action behavior',
+        'Back',
+    ]
+
+
+def test_home_settings_can_change_the_display_name(
+    session: Session, active_profile: Profile
+) -> None:
+    mock_select = patch('src.cli.settings.questionary.select')
+    with (
+        patch('src.cli.home._can_prompt', return_value=True),
+        patch('src.cli.home._choose_action', side_effect=['settings', 'exit']),
+        patch('src.cli.settings.Prompt.ask', return_value='Alex'),
+        mock_select as mock_select_obj,
+    ):
+        mock_select_obj.return_value.unsafe_ask.return_value = 'name'
+        result = _invoke_home()
+
+    assert result.exit_code == 0
     session.refresh(active_profile)
     assert active_profile.username == 'Alex'
-    assert active_profile.after_action == AfterAction.EXIT
+    assert active_profile.after_action == AfterAction.HOME
     assert 'Alex' in result.stdout
-    titles = [choice.title for choice in mock_select_obj.call_args.kwargs['choices']]
-    assert titles == ['Return home', 'Exit']
+    assert 'Display name' in result.stdout
+
+
+def test_home_settings_can_change_after_action_behavior(
+    session: Session, active_profile: Profile
+) -> None:
+    mock_select = patch('src.cli.settings.questionary.select')
+    with (
+        patch('src.cli.home._can_prompt', return_value=True),
+        patch('src.cli.home._choose_action', side_effect=['settings', 'exit']),
+        patch('src.cli.settings.Prompt.ask') as mock_ask,
+        mock_select as mock_select_obj,
+    ):
+        mock_select_obj.return_value.unsafe_ask.side_effect = [
+            'after_action',
+            AfterAction.EXIT,
+        ]
+        result = _invoke_home()
+
+    assert result.exit_code == 0
+    mock_ask.assert_not_called()
+    session.refresh(active_profile)
+    assert active_profile.username == 'testuser'
+    assert active_profile.after_action == AfterAction.EXIT
+    assert 'Exit' in result.stdout
+    after_titles = [
+        choice.title for choice in mock_select_obj.call_args_list[1].kwargs['choices']
+    ]
+    assert after_titles == ['Return home', 'Exit']
 
 
 def test_cancelling_settings_editor_leaves_values_unchanged(

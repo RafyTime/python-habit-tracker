@@ -78,12 +78,24 @@ def settings(
     _show_profile(profile)
 
 
-def edit_settings() -> None:
-    """Interactively edit the display name and after-action preference."""
-    service = ProfileService(get_session)
-    profile = service.ensure_single_profile()
-    name = Prompt.ask('Display name', default=profile.username).strip()
-    selected = questionary.select(
+def _choose_settings_action() -> str | None:
+    render.before_prompts()
+    return questionary.select(
+        'What would you like to change?',
+        choices=[
+            questionary.Choice(title='Change display name', value='name'),
+            questionary.Choice(
+                title='Change after-action behavior', value='after_action'
+            ),
+            questionary.Choice(title='Back', value='back'),
+        ],
+        style=render.select_style,
+    ).unsafe_ask()
+
+
+def _choose_after_action() -> AfterAction | None:
+    render.before_prompts()
+    return questionary.select(
         'After an action?',
         choices=[
             questionary.Choice(
@@ -93,13 +105,29 @@ def edit_settings() -> None:
                 title=_after_action_label(AfterAction.EXIT), value=AfterAction.EXIT
             ),
         ],
+        style=render.select_style,
     ).unsafe_ask()
-    if selected is None:
+
+
+def edit_settings() -> None:
+    """Show current settings, then offer individual changes or a return."""
+    service = ProfileService(get_session)
+    profile = service.ensure_single_profile()
+    _show_profile(profile)
+    action = _choose_settings_action()
+    if action is None or action == 'back':
         raise Exit()
-    try:
-        service.update_display_name(name)
-    except ValueError as error:
-        render.error(str(error))
-        raise Exit(1)
-    profile = service.update_after_action(selected)
+    if action == 'name':
+        render.before_prompts()
+        name = Prompt.ask('Display name', default=profile.username).strip()
+        try:
+            profile = service.update_display_name(name)
+        except ValueError as error:
+            render.error(str(error))
+            raise Exit(1)
+    elif action == 'after_action':
+        selected = _choose_after_action()
+        if selected is None:
+            raise Exit()
+        profile = service.update_after_action(selected)
     _show_profile(profile)

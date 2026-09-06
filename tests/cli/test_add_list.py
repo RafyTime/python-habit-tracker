@@ -71,6 +71,7 @@ def test_list_prioritizes_name_repetition_and_status_over_timestamps(
     result = _invoke(['list'])
 
     assert result.exit_code == 0
+    assert 'Habits' in result.stdout
     assert 'Read 10 Pages' in result.stdout
     assert 'Daily' in result.stdout
     assert 'Due' in result.stdout
@@ -78,7 +79,7 @@ def test_list_prioritizes_name_repetition_and_status_over_timestamps(
     assert 'created_at' not in result.stdout
 
 
-def test_explicit_add_stores_no_icon_unless_supplied(
+def test_explicit_add_stores_no_icon_unless_the_picker_is_requested(
     session: Session, active_profile: Profile
 ) -> None:
     result = _invoke(['add', 'Morning Walk', '--every', 'daily'])
@@ -93,11 +94,52 @@ def test_explicit_add_stores_no_icon_unless_supplied(
     assert render.DEFAULT_HABIT_ICON in listed.stdout
 
 
-def test_explicit_add_stores_icon_and_list_keeps_the_name_beside_it(
+def test_add_icon_flag_without_a_terminal_fails_and_stores_nothing(
+    session: Session, active_profile: Profile
+) -> None:
+    result = _invoke(['add', 'Read 10 Pages', '--every', 'daily', '--icon'])
+
+    assert result.exit_code == 1
+    output = result.stdout.lower()
+    assert 'icon' in output
+    assert 'interactive' in output
+    assert session.exec(select(Habit)).first() is None
+
+
+def test_add_does_not_accept_an_inline_icon_value(
     session: Session, active_profile: Profile
 ) -> None:
     result = _invoke(['add', 'Read 10 Pages', '--every', 'daily', '--icon', '📚'])
 
+    assert result.exit_code != 0
+    assert session.exec(select(Habit)).first() is None
+
+
+def test_add_icon_flag_stores_a_suggested_icon_beside_the_name(
+    session: Session, active_profile: Profile
+) -> None:
+    mock_select = patch('src.cli.habit.questionary.select')
+    with (
+        patch('src.cli.habit._can_prompt', return_value=True),
+        mock_select as mock_select_obj,
+    ):
+        mock_select_obj.return_value.ask.return_value = '📚'
+        result = _invoke(['add', 'Read 10 Pages', '--every', 'daily', '--icon'])
+
+    titles = [choice.title for choice in mock_select_obj.call_args.kwargs['choices']]
+    curated = [
+        title
+        for title in titles
+        if title not in {'Custom symbol', 'No Icon'}
+        and not title.startswith('Keep')
+        and not title.startswith('Clear')
+    ]
+    assert 8 <= len(curated) <= 12
+    assert 'Custom symbol' in titles
+    assert 'No Icon' in titles
+    assert any('Reading' in title for title in titles)
+    assert mock_select_obj.call_args.args[0] == 'Choose an Icon for Read 10 Pages:'
+    assert 'style' in mock_select_obj.call_args.kwargs
     assert result.exit_code == 0
     habit = session.exec(select(Habit).where(Habit.name == 'Read 10 Pages')).first()
     assert habit is not None
@@ -124,9 +166,11 @@ def test_interactive_add_can_choose_a_suggested_icon(
 
     icon_choices = mock_select_obj.call_args_list[1].kwargs['choices']
     titles = [choice.title for choice in icon_choices]
-    assert any('📚' in title for title in titles)
-    assert any('custom' in title.lower() for title in titles)
-    assert any(title == 'No icon' for title in titles)
+    curated = [title for title in titles if title not in {'Custom symbol', 'No Icon'}]
+    assert 8 <= len(curated) <= 12
+    assert any('Reading' in title for title in titles)
+    assert 'Custom symbol' in titles
+    assert 'No Icon' in titles
     assert result.exit_code == 0
     habit = session.exec(select(Habit).where(Habit.name == 'Read 10 Pages')).first()
     assert habit is not None
@@ -170,6 +214,21 @@ def test_interactive_add_can_choose_no_icon(
     assert habit.icon is None
 
 
+def test_add_icon_picker_cancel_does_not_store_a_habit(
+    session: Session, active_profile: Profile
+) -> None:
+    mock_select = patch('src.cli.habit.questionary.select')
+    with (
+        patch('src.cli.habit._can_prompt', return_value=True),
+        mock_select as mock_select_obj,
+    ):
+        mock_select_obj.return_value.ask.return_value = None
+        result = _invoke(['add', 'Morning Walk', '--every', 'daily', '--icon'])
+
+    assert result.exit_code == 0
+    assert session.exec(select(Habit)).first() is None
+
+
 def test_explicit_add_in_a_tty_does_not_prompt_for_an_icon(
     session: Session, active_profile: Profile
 ) -> None:
@@ -190,7 +249,14 @@ def test_explicit_add_in_a_tty_does_not_prompt_for_an_icon(
 def test_add_rejects_a_multiline_icon(
     session: Session, active_profile: Profile
 ) -> None:
-    result = _invoke(['add', 'Read 10 Pages', '--every', 'daily', '--icon', 'a\nb'])
+    mock_select = patch('src.cli.habit.questionary.select')
+    with (
+        patch('src.cli.habit._can_prompt', return_value=True),
+        patch('src.cli.habit.Prompt.ask', return_value='a\nb'),
+        mock_select as mock_select_obj,
+    ):
+        mock_select_obj.return_value.ask.return_value = '__custom__'
+        result = _invoke(['add', 'Read 10 Pages', '--every', 'daily', '--icon'])
 
     assert result.exit_code == 1
     assert session.exec(select(Habit)).first() is None
@@ -357,9 +423,14 @@ def test_non_interactive_add_without_repetition_fails_with_an_example(
 def test_add_rejects_an_oversized_icon(
     session: Session, active_profile: Profile
 ) -> None:
-    result = _invoke(
-        ['add', 'Morning Walk', '--every', 'daily', '--icon', 'not-a-short-icon']
-    )
+    mock_select = patch('src.cli.habit.questionary.select')
+    with (
+        patch('src.cli.habit._can_prompt', return_value=True),
+        patch('src.cli.habit.Prompt.ask', return_value='not-a-short-icon'),
+        mock_select as mock_select_obj,
+    ):
+        mock_select_obj.return_value.ask.return_value = '__custom__'
+        result = _invoke(['add', 'Morning Walk', '--every', 'daily', '--icon'])
 
     assert result.exit_code == 1
     assert session.exec(select(Habit)).first() is None
@@ -368,7 +439,14 @@ def test_add_rejects_an_oversized_icon(
 def test_add_rejects_a_replacement_character_icon(
     session: Session, active_profile: Profile
 ) -> None:
-    result = _invoke(['add', 'Eat', '--every', 'daily', '--icon', '\ufffd'])
+    mock_select = patch('src.cli.habit.questionary.select')
+    with (
+        patch('src.cli.habit._can_prompt', return_value=True),
+        patch('src.cli.habit.Prompt.ask', return_value='\ufffd'),
+        mock_select as mock_select_obj,
+    ):
+        mock_select_obj.return_value.ask.return_value = '__custom__'
+        result = _invoke(['add', 'Eat', '--every', 'daily', '--icon'])
 
     assert result.exit_code == 1
     assert 'not valid' in result.stdout.lower()

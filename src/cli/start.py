@@ -25,21 +25,25 @@ def _can_prompt() -> bool:
 
 
 def _ask_display_name(current: str) -> str:
+    render.before_prompts()
     return Prompt.ask('What should we call you?', default=current).strip()
 
 
 def _choose_beginning() -> str | None:
+    render.before_prompts()
     return questionary.select(
         'How would you like to begin?',
         choices=[
             questionary.Choice(title='Create my first habit', value='personal'),
             questionary.Choice(title='Explore sample data', value='sample'),
         ],
+        style=render.select_style,
     ).ask()
 
 
 def _confirm_first_completion(habit: Habit) -> bool:
     period = 'today' if habit.periodicity == Periodicity.DAILY else 'this week'
+    render.before_prompts()
     return Confirm.ask(f'Mark {habit.name} done for {period}?', default=True)
 
 

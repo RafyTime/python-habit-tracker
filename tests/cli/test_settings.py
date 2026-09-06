@@ -31,6 +31,7 @@ def test_settings_shows_display_name_and_home_after_action(
 
     assert result.exit_code == 0
     assert 'User' in result.stdout
+    assert 'Settings' in result.stdout
     assert 'Display name' in result.stdout
     assert 'After an action' in result.stdout
     assert 'Return home' in result.stdout

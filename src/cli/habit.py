@@ -29,12 +29,19 @@ _REPETITION_ALIASES = {
 }
 _CUSTOM_ICON = '__custom__'
 _NO_ICON = '__none__'
+_KEEP_ICON = '__keep__'
+_CLEAR_ICON = '__clear__'
 _SUGGESTED_ICONS = (
     ('📚', 'Reading'),
     ('💧', 'Water'),
     ('🏃', 'Movement'),
     ('🧘', 'Mindfulness'),
     ('📝', 'Writing'),
+    ('🥗', 'Food'),
+    ('😴', 'Sleep'),
+    ('💪', 'Strength'),
+    ('🧹', 'Chores'),
+    ('🎯', 'Focus'),
 )
 
 
@@ -115,36 +122,69 @@ def _choose_due_habit(service: HabitService) -> Habit:
         render.warning('Nothing is due right now.')
         render.next_step('see your snapshot with [cyan]habit today[/cyan].')
         raise Exit(1)
+    render.before_prompts()
     selected_id = questionary.select(
         'Which habit is done?',
         choices=[
             questionary.Choice(title=_picker_label(habit), value=habit.id)
             for habit in due_habits
         ],
+        style=render.select_style,
     ).ask()
     if selected_id is None:
         raise Exit()
     return next(habit for habit in due_habits if habit.id == selected_id)
 
 
-def _prompt_icon() -> str | None:
-    choices = [
+def _prompt_icon(
+    *,
+    habit_name: str | None = None,
+    current: str | None = None,
+    allow_keep: bool = False,
+    allow_clear: bool = False,
+) -> str | None:
+    choices = []
+    if allow_keep:
+        current_label = (
+            f'{_icon_prefix(current)}{habit_name or "current Icon"}'.rstrip()
+        )
+        choices.append(
+            questionary.Choice(
+                title=f'Keep current Icon ({current_label})',
+                value=_KEEP_ICON,
+            )
+        )
+    choices.extend(
         questionary.Choice(title=f'{icon}  {label}', value=icon)
         for icon, label in _SUGGESTED_ICONS
-    ]
-    choices.append(questionary.Choice(title='Enter a custom icon', value=_CUSTOM_ICON))
-    choices.append(questionary.Choice(title='No icon', value=_NO_ICON))
+    )
+    choices.append(questionary.Choice(title='Custom symbol', value=_CUSTOM_ICON))
+    if allow_clear:
+        choices.append(questionary.Choice(title='Clear Icon', value=_CLEAR_ICON))
+    else:
+        choices.append(questionary.Choice(title='No Icon', value=_NO_ICON))
 
-    selected = questionary.select('Choose an icon:', choices=choices).ask()
+    prompt = f'Choose an Icon for {habit_name}:' if habit_name else 'Choose an Icon:'
+    render.before_prompts()
+    selected = questionary.select(
+        prompt,
+        choices=choices,
+        style=render.select_style,
+    ).ask()
     if selected is None:
         raise Exit()
-    if selected == _NO_ICON:
+    if selected in {_NO_ICON, _CLEAR_ICON}:
         return None
+    if selected == _KEEP_ICON:
+        return _KEEP_ICON
     if selected != _CUSTOM_ICON:
         return selected
 
-    custom = Prompt.ask('Icon').strip()
+    render.before_prompts()
+    custom = Prompt.ask('Custom symbol').strip()
     if not custom:
+        if allow_keep:
+            raise Exit()
         return None
     return custom
 
@@ -152,6 +192,7 @@ def _prompt_icon() -> str | None:
 def _ask_for_another_name() -> str:
     if not _can_prompt():
         raise Exit(1)
+    render.before_prompts()
     name = Prompt.ask('Choose another name').strip()
     if not name:
         render.error('Habit name cannot be empty.')
@@ -165,10 +206,10 @@ def add(
         str | None,
         Option('--every', '-e', help='How often: day, daily, week, or weekly'),
     ] = None,
-    icon: Annotated[
-        str | None,
-        Option('--icon', '-i', help='Optional short icon shown beside the name'),
-    ] = None,
+    pick_icon: Annotated[
+        bool,
+        Option('--icon', '-i', help='Choose an Icon interactively'),
+    ] = False,
 ) -> None:
     """Add a daily or weekly habit."""
     service = _habit_service()
@@ -181,6 +222,7 @@ def add(
                 'add one with [cyan]habit add "Habit name" --every daily[/cyan].'
             )
             raise Exit(1)
+        render.before_prompts()
         name = Prompt.ask('Habit name').strip()
         if not name:
             render.error('Habit name cannot be empty.')
@@ -194,20 +236,30 @@ def add(
                 'add it with [cyan]habit add "Habit name" --every daily[/cyan].'
             )
             raise Exit(1)
+        render.before_prompts()
         every_choice = questionary.select(
             'How often?',
             choices=[
                 questionary.Choice(title='Daily', value='daily'),
                 questionary.Choice(title='Weekly', value='weekly'),
             ],
+            style=render.select_style,
         ).ask()
         if not every_choice:
             raise Exit()
         every = every_choice
         interactive_creation = True
 
-    if icon is None and interactive_creation:
-        icon = _prompt_icon()
+    if pick_icon and not _can_prompt():
+        _require_icon_picker(
+            next_step=(
+                'run this command in a terminal, or omit --icon to store no Icon.'
+            )
+        )
+
+    icon: str | None = None
+    if pick_icon or interactive_creation:
+        icon = _prompt_icon(habit_name=name)
 
     periodicity = _parse_repetition(every)
     if periodicity is None:
@@ -391,12 +443,14 @@ def _choice_label(habit: Habit) -> str:
 
 
 def _choose_habit(habits: list[Habit], prompt: str) -> Habit:
+    render.before_prompts()
     selected_id = questionary.select(
         prompt,
         choices=[
             questionary.Choice(title=_choice_label(habit), value=habit.id)
             for habit in habits
         ],
+        style=render.select_style,
     ).ask()
     if selected_id is None:
         raise Exit()
@@ -463,14 +517,46 @@ def _apply_habit_update(
         raise Exit(1)
 
 
+def _choose_edit_action() -> str | None:
+    render.before_prompts()
+    return questionary.select(
+        'What would you like to change?',
+        choices=[
+            questionary.Choice(title='Change name', value='name'),
+            questionary.Choice(title='Change Icon', value='icon'),
+            questionary.Choice(title='Clear Icon', value='clear'),
+            questionary.Choice(title='Back', value='back'),
+        ],
+        style=render.select_style,
+    ).ask()
+
+
+def _require_icon_picker(*, next_step: str) -> None:
+    if _can_prompt():
+        return
+    render.error('The Icon picker needs an interactive terminal.')
+    render.next_step(next_step)
+    raise Exit(1)
+
+
+def _show_habit_updated(habit: Habit) -> None:
+    label = render.labelled_habit(habit.name, habit.icon)
+    with render.view():
+        render.success(f'{label} was updated.')
+        render.next_step('see it with [cyan]habit list[/cyan].')
+
+
 def edit(
     selector: Annotated[str | None, Argument(help='Habit ID or name')] = None,
     name: Annotated[
         str | None, Option('--name', '-n', help='New displayed name')
     ] = None,
-    icon: Annotated[str | None, Option('--icon', '-i', help='Replacement icon')] = None,
+    pick_icon: Annotated[
+        bool,
+        Option('--icon', '-i', help='Choose an Icon interactively'),
+    ] = False,
     clear_icon: Annotated[
-        bool, Option('--clear-icon', help='Remove the current icon')
+        bool, Option('--clear-icon', help='Remove the current Icon')
     ] = False,
     archived: Annotated[
         bool,
@@ -478,8 +564,8 @@ def edit(
     ] = False,
 ) -> None:
     """Edit a habit's name or icon."""
-    if clear_icon and icon is not None:
-        render.error('Choose either a replacement icon or --clear-icon, not both.')
+    if pick_icon and clear_icon:
+        render.error('Choose either --icon or --clear-icon, not both.')
         raise Exit(1)
 
     service = _habit_service()
@@ -501,17 +587,56 @@ def edit(
         render.next_step('edit it with [cyan]habit edit NAME --archived[/cyan].')
         raise Exit(1)
 
-    if name is None and icon is None and not clear_icon:
+    picker_next_step = (
+        'run this command in a terminal, or use '
+        '[cyan]habit edit NAME --clear-icon[/cyan].'
+    )
+    if pick_icon:
+        _require_icon_picker(next_step=picker_next_step)
+
+    if name is None and not pick_icon and not clear_icon:
         if not _can_prompt():
-            render.error('Choose a name or icon to change.')
+            render.error('Choose a name or Icon to change.')
             render.next_step(
                 'edit with [cyan]habit edit NAME --name "New name"[/cyan].'
             )
             raise Exit(1)
-        name = Prompt.ask('New name', default=habit.name).strip()
-        if not name:
-            render.error('Habit name cannot be empty.')
-            raise Exit(1)
+        action = _choose_edit_action()
+        if action is None or action == 'back':
+            raise Exit()
+        if action == 'name':
+            render.before_prompts()
+            name = Prompt.ask('New name', default=habit.name).strip()
+            if not name:
+                render.error('Habit name cannot be empty.')
+                raise Exit(1)
+        elif action == 'icon':
+            pick_icon = True
+        elif action == 'clear':
+            clear_icon = True
+
+    icon: str | None = None
+    kept_icon = False
+    if pick_icon:
+        _require_icon_picker(next_step=picker_next_step)
+        chosen = _prompt_icon(
+            habit_name=habit.name,
+            current=habit.icon,
+            allow_keep=True,
+            allow_clear=True,
+        )
+        if chosen == _KEEP_ICON:
+            kept_icon = True
+        elif chosen is None:
+            clear_icon = True
+        else:
+            icon = chosen
+
+    if name is None and icon is None and not clear_icon:
+        if kept_icon:
+            _show_habit_updated(habit)
+            return
+        raise Exit()
 
     updated = _apply_habit_update(
         service,
@@ -521,10 +646,7 @@ def edit(
         clear_icon=clear_icon,
         include_archived=archived,
     )
-    label = render.labelled_habit(updated.name, updated.icon)
-    with render.view():
-        render.success(f'{label} was updated.')
-        render.next_step('see it with [cyan]habit list[/cyan].')
+    _show_habit_updated(updated)
 
 
 def archive_habit(
@@ -546,9 +668,11 @@ def archive_habit(
         render.next_step('restore it with [cyan]habit restore[/cyan].')
         raise Exit(1)
 
-    if not force and not Confirm.ask(f"Archive '{habit.name}' and keep its history?"):
-        render.warning('Cancelled.')
-        raise Exit()
+    if not force:
+        render.before_prompts()
+        if not Confirm.ask(f"Archive '{habit.name}' and keep its history?"):
+            render.warning('Cancelled.')
+            raise Exit()
 
     archived = service.archive_habit(require_persisted_id(habit.id, 'Habit'))
     label = render.labelled_habit(archived.name, archived.icon)
@@ -618,6 +742,7 @@ def delete_habit(
             f'{impact.completion_count} completions and {impact.xp_amount} XP. '
             'Historical stats will change. This cannot be undone. Continue?'
         )
+        render.before_prompts()
         if not Confirm.ask(warning, default=False):
             render.warning('Cancelled.')
             raise Exit()

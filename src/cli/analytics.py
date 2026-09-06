@@ -144,7 +144,7 @@ def stats(
             ('Latest completion', _latest_completion_label(completions)),
         ]
         with render.view():
-            render.heading(render.labelled_habit(habit.name, habit.icon))
+            render.heading(habit.name, symbol=render.visible_icon(habit.icon))
             render.blank()
             render.stats(rows)
             if archived or not completions:

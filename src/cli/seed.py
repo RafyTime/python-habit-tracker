@@ -21,6 +21,7 @@ def _can_prompt() -> bool:
 
 
 def _confirm_existing_data() -> bool:
+    render.before_prompts()
     return Confirm.ask(
         'This adds sample habits to a tracker that already has habits. Continue?',
         default=False,

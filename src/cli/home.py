@@ -41,12 +41,14 @@ def _supports_live() -> bool:
 
 
 def _choose_action() -> str | None:
+    render.before_prompts()
     return questionary.select(
         'What would you like to do?',
         choices=[
             questionary.Choice(title=label, value=value)
             for value, label, _handler in _HOME_ACTIONS
         ],
+        style=render.select_style,
     ).unsafe_ask()
 
 
