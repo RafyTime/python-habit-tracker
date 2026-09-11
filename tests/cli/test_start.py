@@ -31,6 +31,17 @@ def test_start_fails_without_an_interactive_terminal(session: Session) -> None:
     assert 'habit add' in result.stdout
 
 
+def test_ctrl_c_exits_quick_start_without_a_traceback(session: Session) -> None:
+    with (
+        patch('src.cli.start._can_prompt', return_value=True),
+        patch('src.cli.start._run_start', side_effect=KeyboardInterrupt),
+    ):
+        result = _invoke(['start'])
+
+    assert result.exit_code == 0
+    assert 'Traceback' not in result.output
+
+
 def test_personal_quick_start_sets_name_creates_habit_and_records_one_completion(
     session: Session,
 ) -> None:
@@ -43,10 +54,12 @@ def test_personal_quick_start_sets_name_creates_habit_and_records_one_completion
         patch('src.cli.start._ask_display_name', return_value='Alex'),
         patch('src.cli.start._choose_beginning', return_value='personal'),
         patch('src.cli.start._confirm_first_completion', return_value=True),
+        patch('src.cli.start._confirm_focused_stats', return_value=True),
+        patch('src.cli.start._choose_ending', return_value='home'),
         patch('src.cli.habit.Prompt.ask', return_value='Read 10 Pages'),
         habit_select as habit_select_obj,
     ):
-        habit_select_obj.return_value.ask.side_effect = ['daily', '📚']
+        habit_select_obj.return_value.ask.side_effect = ['daily', '📚', 1]
         result = _invoke(['start'])
 
     assert result.exit_code == 0, result.output
@@ -58,6 +71,24 @@ def test_personal_quick_start_sets_name_creates_habit_and_records_one_completion
     assert '📚' in output
     assert '+1 XP' in output
     assert '1-day streak' in output
+    assert 'A Habit repeats once in each Daily or Weekly Period.' in output
+    assert 'habit add "Read 10 Pages" --every daily --icon' in output
+    assert 'habit today' in output
+    assert 'habit done "Read 10 Pages"' in output
+    assert (
+        'The +1 XP and Current streak above came from this routine Completion.'
+        in output
+    )
+    assert '3, 7, 14, and 30 consecutive Periods' in output
+    ascii_compact = ''.join(
+        character
+        for character in output
+        if character.isascii() and not character.isspace()
+    )
+    assert 'fivebonusXPonceperHabit' in ascii_compact
+    assert 'habit stats "Read 10 Pages"' in output
+    assert 'XP earned' in output
+    assert 'Latest completion' in output
     assert _shows_guide_url(output)
     assert 'What would you like to do?' in output
     assert 'Mark a habit done' in output
@@ -88,6 +119,8 @@ def test_personal_quick_start_stores_a_custom_icon(session: Session) -> None:
         patch('src.cli.start._ask_display_name', return_value='Alex'),
         patch('src.cli.start._choose_beginning', return_value='personal'),
         patch('src.cli.start._confirm_first_completion', return_value=False),
+        patch('src.cli.start._confirm_focused_stats', return_value=False),
+        patch('src.cli.start._choose_ending', return_value='exit'),
         patch('src.cli.habit.Prompt.ask', side_effect=['Morning Walk', '★']),
         habit_select as habit_select_obj,
     ):
@@ -121,6 +154,8 @@ def test_sample_quick_start_loads_five_predefined_habits_with_histories(
         patch('src.cli.home._choose_action', return_value='exit'),
         patch('src.cli.start._ask_display_name', return_value='Alex'),
         patch('src.cli.start._choose_beginning', return_value='sample'),
+        patch('src.cli.start._confirm_focused_stats', return_value=True),
+        patch('src.cli.start._choose_ending', return_value='home'),
     ):
         result = _invoke(['start'])
 
@@ -128,6 +163,12 @@ def test_sample_quick_start_loads_five_predefined_habits_with_histories(
     assert 'Alex' in result.stdout
     assert _shows_guide_url(result.stdout)
     assert 'What would you like to do?' in result.stdout
+    assert (
+        'This generated history is Sample data, not your personal progress.'
+        in result.stdout
+    )
+    assert 'habit today' in result.stdout
+    assert 'habit stats ' in result.stdout
 
     listed = _invoke(['list'])
     assert listed.exit_code == 0
@@ -173,6 +214,8 @@ def test_existing_habits_skip_sample_data_and_keep_history(session: Session) -> 
         patch('src.cli.home._can_prompt', return_value=True),
         patch('src.cli.home._choose_action', return_value='exit'),
         patch('src.cli.start._ask_display_name', return_value='Alex'),
+        patch('src.cli.start._confirm_focused_stats', return_value=True),
+        patch('src.cli.start._choose_ending', return_value='home'),
         choose as choose_beginning,
     ):
         result = _invoke(['start'])
@@ -180,6 +223,9 @@ def test_existing_habits_skip_sample_data_and_keep_history(session: Session) -> 
     assert result.exit_code == 0, result.output
     assert _shows_guide_url(result.stdout)
     assert 'What would you like to do?' in result.stdout
+    assert 'Your habits and history stay unchanged during this tour.' in result.stdout
+    assert 'habit today' in result.stdout
+    assert 'habit stats "Morning Walk"' in result.stdout
     choose_beginning.assert_not_called()
     habits = list(session.exec(select(Habit)))
     assert [habit.name for habit in habits] == ['Morning Walk']
@@ -198,6 +244,8 @@ def test_archived_habits_also_skip_sample_data(session: Session) -> None:
         patch('src.cli.home._can_prompt', return_value=True),
         patch('src.cli.home._choose_action', return_value='exit'),
         patch('src.cli.start._ask_display_name', return_value='Alex'),
+        patch('src.cli.start._confirm_focused_stats', return_value=False),
+        patch('src.cli.start._choose_ending', return_value='exit'),
         patch('src.cli.start._choose_beginning', return_value='sample') as choose,
     ):
         result = _invoke(['start'])
@@ -219,6 +267,8 @@ def test_repeating_start_retains_the_display_name_without_resetting_habits(
         patch('src.cli.home._choose_action', return_value='exit'),
         patch('src.cli.start._ask_display_name', return_value='Alex'),
         patch('src.cli.start._choose_beginning', return_value='sample'),
+        patch('src.cli.start._confirm_focused_stats', return_value=False),
+        patch('src.cli.start._choose_ending', return_value='exit'),
     ):
         first = _invoke(['start'])
     assert first.exit_code == 0, first.output
@@ -231,6 +281,8 @@ def test_repeating_start_retains_the_display_name_without_resetting_habits(
         patch('src.cli.home._choose_action', return_value='exit'),
         patch('src.cli.start._ask_display_name', return_value='Alex'),
         patch('src.cli.start._choose_beginning', return_value='sample') as choose,
+        patch('src.cli.start._confirm_focused_stats', return_value=False),
+        patch('src.cli.start._choose_ending', return_value='exit'),
     ):
         second = _invoke(['start'])
 
@@ -291,6 +343,8 @@ def test_skipping_the_first_completion_keeps_the_habit(
         patch('src.cli.start._ask_display_name', return_value='Alex'),
         patch('src.cli.start._choose_beginning', return_value='personal'),
         patch('src.cli.start._confirm_first_completion', return_value=False),
+        patch('src.cli.start._confirm_focused_stats', return_value=True),
+        patch('src.cli.start._choose_ending', return_value='home'),
         patch('src.cli.habit.Prompt.ask', return_value='Gym Session'),
         habit_select as habit_select_obj,
     ):
@@ -305,3 +359,56 @@ def test_skipping_the_first_completion_keeps_the_habit(
     assert habit.periodicity == Periodicity.WEEKLY
     assert habit.icon is None
     assert session.exec(select(Completion)).first() is None
+
+
+def test_cancelling_done_keeps_the_new_habit_and_reaches_the_ending(
+    session: Session,
+) -> None:
+    habit_select = patch('src.cli.habit.questionary.select')
+    with (
+        patch('src.cli.start._can_prompt', return_value=True),
+        patch('src.cli.habit._can_prompt', return_value=True),
+        patch('src.cli.start._ask_display_name', return_value='Alex'),
+        patch('src.cli.start._choose_beginning', return_value='personal'),
+        patch('src.cli.start._confirm_first_completion', return_value=True),
+        patch('src.cli.start._confirm_focused_stats', return_value=False),
+        patch('src.cli.start._choose_ending', return_value='exit'),
+        patch('src.cli.habit.Prompt.ask', return_value='Morning Walk'),
+        habit_select as habit_select_obj,
+    ):
+        habit_select_obj.return_value.ask.side_effect = ['daily', '__none__', None]
+        result = _invoke(['start'])
+
+    assert result.exit_code == 0, result.output
+    assert 'Traceback' not in result.output
+    assert _shows_guide_url(result.stdout)
+    assert session.exec(select(Habit)).one().name == 'Morning Walk'
+    assert session.exec(select(Completion)).first() is None
+
+
+def test_existing_habit_with_nothing_due_skips_completion_and_can_exit(
+    session: Session,
+) -> None:
+    assert _invoke(['add', 'Morning Walk', '--every', 'daily']).exit_code == 0
+    assert _invoke(['done', 'Morning Walk']).exit_code == 0
+
+    with (
+        patch('src.cli.start._can_prompt', return_value=True),
+        patch('src.cli.start._ask_display_name', return_value='Alex'),
+        patch('src.cli.start._confirm_first_completion') as confirm_completion,
+        patch('src.cli.start._confirm_focused_stats', return_value=True),
+        patch('src.cli.start._choose_ending', return_value='exit'),
+        patch('src.cli.start.home') as open_home,
+    ):
+        result = _invoke(['start'])
+
+    assert result.exit_code == 0, result.output
+    assert (
+        'Nothing is Due, so there is no Completion to record in this tour.'
+        in result.stdout
+    )
+    assert 'habit today' in result.stdout
+    assert 'habit stats "Morning Walk"' in result.stdout
+    assert _shows_guide_url(result.stdout)
+    confirm_completion.assert_not_called()
+    open_home.assert_not_called()
