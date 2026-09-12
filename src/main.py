@@ -72,7 +72,7 @@ app.command(name='archive', rich_help_panel=_MANAGE)(archive_command)
 app.command(rich_help_panel=_MANAGE)(restore_command)
 app.command(name='delete', rich_help_panel=_MANAGE)(delete_command)
 app.command(rich_help_panel=_MANAGE)(settings_command)
-app.command(rich_help_panel=_GET_STARTED)(start_command)
+app.command(rich_help_panel=_GET_STARTED, deprecated=True)(start_command)
 app.command(rich_help_panel=_GET_STARTED)(seed_command)
 
 
