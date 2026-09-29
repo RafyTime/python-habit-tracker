@@ -3,7 +3,11 @@
 ## Contents
 
 - [Start here](#start-here)
+  - [Assignment and CLI language](#assignment-and-cli-language)
 - [Everyday tracking](#everyday-tracking)
+  - [Add a Habit](#add-a-habit)
+  - [Record a Completion](#record-a-completion)
+  - [Inspect your Habits](#inspect-your-habits)
 - [Icons and editing](#icons-and-editing)
 - [Archive, restoration, and permanent deletion](#archive-restoration-and-permanent-deletion)
 - [Stats and XP](#stats-and-xp)
