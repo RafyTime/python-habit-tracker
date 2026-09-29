@@ -30,7 +30,7 @@ def _show_profile(profile: Profile) -> None:
         render.blank()
         render.stats(
             [
-                ('Display name', profile.username),
+                ('Display name', profile.display_name),
                 ('After an action', _after_action_label(profile.after_action)),
             ]
         )
@@ -123,7 +123,7 @@ def edit_settings() -> None:
         raise Exit()
     if action == 'name':
         render.before_prompts()
-        name = Prompt.ask('Display name', default=profile.username).strip()
+        name = Prompt.ask('Display name', default=profile.display_name).strip()
         try:
             profile = service.update_display_name(name)
         except ValueError as error:

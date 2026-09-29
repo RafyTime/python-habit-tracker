@@ -28,14 +28,14 @@ def test_today_on_fresh_database_shows_empty_state_with_next_action(
     assert 'ID' not in result.stdout
     profile = session.exec(select(Profile)).first()
     assert profile is not None
-    assert profile.username == 'User'
+    assert profile.display_name == 'User'
 
 
 def test_today_greets_the_display_name(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
-    active_profile.username = 'Alex'
-    session.add(active_profile)
+    single_profile.display_name = 'Alex'
+    session.add(single_profile)
     session.commit()
 
     result = _run_today(session)
@@ -45,10 +45,10 @@ def test_today_greets_the_display_name(
 
 
 def test_today_greeting_follows_local_time_of_day(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
-    active_profile.username = 'Alex'
-    session.add(active_profile)
+    single_profile.display_name = 'Alex'
+    session.add(single_profile)
     session.commit()
 
     morning = datetime(2026, 9, 6, 8, 0, 0)
@@ -67,17 +67,17 @@ def test_today_greeting_follows_local_time_of_day(
 
 
 def test_today_distinguishes_habits_due_today_from_habits_due_this_week(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     session.add_all(
         [
             Habit(
-                profile_id=active_profile.id,
+                profile_id=single_profile.id,
                 name='Read 10 Pages',
                 periodicity=Periodicity.DAILY,
             ),
             Habit(
-                profile_id=active_profile.id,
+                profile_id=single_profile.id,
                 name='Gym Session',
                 periodicity=Periodicity.WEEKLY,
             ),
@@ -95,18 +95,18 @@ def test_today_distinguishes_habits_due_today_from_habits_due_this_week(
 
 
 def test_today_shows_habit_icons_beside_names(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     session.add_all(
         [
             Habit(
-                profile_id=active_profile.id,
+                profile_id=single_profile.id,
                 name='Read 10 Pages',
                 periodicity=Periodicity.DAILY,
                 icon='📚',
             ),
             Habit(
-                profile_id=active_profile.id,
+                profile_id=single_profile.id,
                 name='Gym Session',
                 periodicity=Periodicity.WEEKLY,
             ),
@@ -125,11 +125,11 @@ def test_today_shows_habit_icons_beside_names(
 
 
 def test_today_skips_a_replacement_character_icon(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     session.add(
         Habit(
-            profile_id=active_profile.id,
+            profile_id=single_profile.id,
             name='Eat',
             periodicity=Periodicity.DAILY,
             icon='\ufffd',
@@ -146,15 +146,15 @@ def test_today_skips_a_replacement_character_icon(
 
 
 def test_today_shows_completed_progress_and_xp(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     due_habit = Habit(
-        profile_id=active_profile.id,
+        profile_id=single_profile.id,
         name='Due Habit',
         periodicity=Periodicity.DAILY,
     )
     done_habit = Habit(
-        profile_id=active_profile.id,
+        profile_id=single_profile.id,
         name='Done Habit',
         periodicity=Periodicity.DAILY,
     )
@@ -169,7 +169,7 @@ def test_today_shows_completed_progress_and_xp(
     session.commit()
     session.add(
         XPEvent(
-            profile_id=active_profile.id,
+            profile_id=single_profile.id,
             amount=1,
             reason='HABIT_COMPLETION',
             habit_id=done_habit.id,
@@ -188,16 +188,16 @@ def test_today_shows_completed_progress_and_xp(
     assert '1/10 XP' in result.stdout
 
 
-def test_today_omits_archived_habits(session: Session, active_profile: Profile) -> None:
+def test_today_omits_archived_habits(session: Session, single_profile: Profile) -> None:
     session.add_all(
         [
             Habit(
-                profile_id=active_profile.id,
+                profile_id=single_profile.id,
                 name='Due Habit',
                 periodicity=Periodicity.DAILY,
             ),
             Habit(
-                profile_id=active_profile.id,
+                profile_id=single_profile.id,
                 name='Archived Habit',
                 periodicity=Periodicity.DAILY,
                 is_active=False,
@@ -216,10 +216,10 @@ def test_today_omits_archived_habits(session: Session, active_profile: Profile) 
 
 
 def test_today_shows_success_when_active_habits_are_done(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     habit = Habit(
-        profile_id=active_profile.id,
+        profile_id=single_profile.id,
         name='Done Habit',
         periodicity=Periodicity.DAILY,
     )
@@ -249,25 +249,25 @@ def _current_week_key() -> str:
 
 
 def test_today_done_adds_completed_active_habits_after_due_habits(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     due_daily = Habit(
-        profile_id=active_profile.id,
+        profile_id=single_profile.id,
         name='Due Daily',
         periodicity=Periodicity.DAILY,
     )
     done_daily = Habit(
-        profile_id=active_profile.id,
+        profile_id=single_profile.id,
         name='Morning Walk',
         periodicity=Periodicity.DAILY,
     )
     due_weekly = Habit(
-        profile_id=active_profile.id,
+        profile_id=single_profile.id,
         name='Due Weekly',
         periodicity=Periodicity.WEEKLY,
     )
     done_weekly = Habit(
-        profile_id=active_profile.id,
+        profile_id=single_profile.id,
         name='Gym Session',
         periodicity=Periodicity.WEEKLY,
     )
@@ -308,15 +308,15 @@ def test_today_done_adds_completed_active_habits_after_due_habits(
 
 
 def test_today_done_keeps_archived_habits_out_of_the_snapshot(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     due = Habit(
-        profile_id=active_profile.id,
+        profile_id=single_profile.id,
         name='Due Habit',
         periodicity=Periodicity.DAILY,
     )
     archived = Habit(
-        profile_id=active_profile.id,
+        profile_id=single_profile.id,
         name='Archived Habit',
         periodicity=Periodicity.DAILY,
         is_active=False,
@@ -340,10 +340,10 @@ def test_today_done_keeps_archived_habits_out_of_the_snapshot(
 
 
 def test_today_done_shows_completed_habits_when_nothing_is_due(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     habit = Habit(
-        profile_id=active_profile.id,
+        profile_id=single_profile.id,
         name='Morning Walk',
         periodicity=Periodicity.DAILY,
     )

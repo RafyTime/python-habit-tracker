@@ -10,6 +10,8 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
+from src.core.models import Periodicity
+
 console = Console(highlight=False)
 
 select_style = questionary.Style(
@@ -27,6 +29,11 @@ _BAR_WIDTH = 8
 DEFAULT_HABIT_ICON = '🔷'
 _buffer: list[RenderableType] | None = None
 _notice: tuple[str, str] | None = None
+
+
+def repetition_label(periodicity: Periodicity) -> str:
+    """Name a Periodicity as the CLI's Repetition choice."""
+    return 'Daily' if periodicity == Periodicity.DAILY else 'Weekly'
 
 
 def _remember(message: str, style: str) -> None:

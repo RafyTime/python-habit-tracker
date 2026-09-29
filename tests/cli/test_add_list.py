@@ -17,7 +17,7 @@ def _invoke(args: list[str], **kwargs):
 
 
 def test_add_and_list_work_through_the_root_cli(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     add_result = _invoke(['add', 'Read 10 Pages', '--every', 'daily'])
 
@@ -28,7 +28,7 @@ def test_add_and_list_work_through_the_root_cli(
     habit = session.exec(select(Habit).where(Habit.name == 'Read 10 Pages')).first()
     assert habit is not None
     assert habit.periodicity == Periodicity.DAILY
-    assert habit.profile_id == active_profile.id
+    assert habit.profile_id == single_profile.id
 
     list_result = _invoke(['list'])
 
@@ -39,7 +39,7 @@ def test_add_and_list_work_through_the_root_cli(
 
 
 def test_add_accepts_day_week_and_weekly_repetition_words(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     day_result = _invoke(['add', 'Morning Walk', '--every', 'day'])
     week_result = _invoke(['add', 'Gym Session', '--every', 'week'])
@@ -64,7 +64,7 @@ def test_add_accepts_day_week_and_weekly_repetition_words(
 
 
 def test_list_prioritizes_name_repetition_and_status_over_timestamps(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _invoke(['add', 'Read 10 Pages', '--every', 'daily'])
 
@@ -80,7 +80,7 @@ def test_list_prioritizes_name_repetition_and_status_over_timestamps(
 
 
 def test_explicit_add_stores_no_icon_unless_the_picker_is_requested(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     result = _invoke(['add', 'Morning Walk', '--every', 'daily'])
 
@@ -95,7 +95,7 @@ def test_explicit_add_stores_no_icon_unless_the_picker_is_requested(
 
 
 def test_add_icon_flag_without_a_terminal_fails_and_stores_nothing(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     result = _invoke(['add', 'Read 10 Pages', '--every', 'daily', '--icon'])
 
@@ -107,7 +107,7 @@ def test_add_icon_flag_without_a_terminal_fails_and_stores_nothing(
 
 
 def test_add_does_not_accept_an_inline_icon_value(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     result = _invoke(['add', 'Read 10 Pages', '--every', 'daily', '--icon', '📚'])
 
@@ -116,7 +116,7 @@ def test_add_does_not_accept_an_inline_icon_value(
 
 
 def test_add_icon_flag_stores_a_suggested_icon_beside_the_name(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.habit.questionary.select')
     with (
@@ -153,7 +153,7 @@ def test_add_icon_flag_stores_a_suggested_icon_beside_the_name(
 
 
 def test_interactive_add_can_choose_a_suggested_icon(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.habit.questionary.select')
     with (
@@ -178,7 +178,7 @@ def test_interactive_add_can_choose_a_suggested_icon(
 
 
 def test_interactive_add_can_enter_a_custom_icon(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.habit.questionary.select')
     with (
@@ -196,7 +196,7 @@ def test_interactive_add_can_enter_a_custom_icon(
 
 
 def test_interactive_add_can_choose_no_icon(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.habit.questionary.select')
     with (
@@ -215,7 +215,7 @@ def test_interactive_add_can_choose_no_icon(
 
 
 def test_add_icon_picker_cancel_does_not_store_a_habit(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.habit.questionary.select')
     with (
@@ -230,7 +230,7 @@ def test_add_icon_picker_cancel_does_not_store_a_habit(
 
 
 def test_explicit_add_in_a_tty_does_not_prompt_for_an_icon(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.habit.questionary.select')
     with (
@@ -247,7 +247,7 @@ def test_explicit_add_in_a_tty_does_not_prompt_for_an_icon(
 
 
 def test_add_rejects_a_multiline_icon(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.habit.questionary.select')
     with (
@@ -263,7 +263,7 @@ def test_add_rejects_a_multiline_icon(
 
 
 def test_add_preserves_display_name_and_rejects_normalized_collisions(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     created = _invoke(['add', 'Read 10 Pages', '--every', 'daily'])
     assert created.exit_code == 0
@@ -287,7 +287,7 @@ def test_add_preserves_display_name_and_rejects_normalized_collisions(
 
 
 def test_add_rejects_an_archived_habits_name_and_asks_for_another(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     created = _invoke(['add', 'Exercise', '--every', 'daily'])
     assert created.exit_code == 0
@@ -310,7 +310,7 @@ def test_add_rejects_an_archived_habits_name_and_asks_for_another(
 
 
 def test_interactive_add_asks_for_another_name_when_archived_name_collides(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     created = _invoke(['add', 'Exercise', '--every', 'daily'])
     assert created.exit_code == 0
@@ -338,7 +338,7 @@ def test_interactive_add_asks_for_another_name_when_archived_name_collides(
 
 
 def test_list_excludes_archived_habits_by_default(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _invoke(['add', 'Active Habit', '--every', 'daily'])
     _invoke(['add', 'Paused Habit', '--every', 'weekly'])
@@ -356,7 +356,7 @@ def test_list_excludes_archived_habits_by_default(
 
 
 def test_list_includes_archived_habits_only_when_explicitly_labelled(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _invoke(['add', 'Active Habit', '--every', 'daily'])
     _invoke(['add', 'Paused Habit', '--every', 'weekly'])
@@ -375,7 +375,7 @@ def test_list_includes_archived_habits_only_when_explicitly_labelled(
 
 
 def test_list_can_filter_by_repetition(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _invoke(['add', 'Morning Walk', '--every', 'daily'])
     _invoke(['add', 'Gym Session', '--every', 'weekly'])
@@ -388,7 +388,7 @@ def test_list_can_filter_by_repetition(
 
 
 def test_non_interactive_add_without_name_fails_with_an_example(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     result = _invoke(['add', '--every', 'daily'])
 
@@ -399,7 +399,7 @@ def test_non_interactive_add_without_name_fails_with_an_example(
 
 
 def test_add_rejects_unknown_repetition_words(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     result = _invoke(['add', 'Morning Walk', '--every', 'monthly'])
 
@@ -410,7 +410,7 @@ def test_add_rejects_unknown_repetition_words(
 
 
 def test_non_interactive_add_without_repetition_fails_with_an_example(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     result = _invoke(['add', 'Morning Walk'])
 
@@ -421,7 +421,7 @@ def test_non_interactive_add_without_repetition_fails_with_an_example(
 
 
 def test_add_rejects_an_oversized_icon(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.habit.questionary.select')
     with (
@@ -437,7 +437,7 @@ def test_add_rejects_an_oversized_icon(
 
 
 def test_add_rejects_a_replacement_character_icon(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.habit.questionary.select')
     with (
@@ -454,7 +454,7 @@ def test_add_rejects_a_replacement_character_icon(
 
 
 def test_interactive_add_prompts_for_missing_name_and_repetition(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.habit.questionary.select')
     with (
@@ -484,7 +484,7 @@ def _header_line(output: str) -> str:
 
 
 def test_list_shows_id_habit_progress_streak_and_repetition_in_that_order(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     created = _invoke(['add', 'Read 10 Pages', '--every', 'daily'])
     assert created.exit_code == 0
@@ -504,7 +504,7 @@ def test_list_shows_id_habit_progress_streak_and_repetition_in_that_order(
 
 
 def test_list_shows_done_progress_and_a_completed_current_streak(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     habit = session.exec(select(Habit)).one()
@@ -536,7 +536,7 @@ def test_list_shows_done_progress_and_a_completed_current_streak(
 
 
 def test_list_shows_due_progress_and_a_pending_current_streak(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     habit = session.exec(select(Habit)).one()
@@ -567,7 +567,7 @@ def test_list_shows_due_progress_and_a_pending_current_streak(
 
 
 def test_list_marks_a_broken_current_streak_without_hiding_due_progress(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     habit = session.exec(select(Habit)).one()
@@ -589,7 +589,7 @@ def test_list_marks_a_broken_current_streak_without_hiding_due_progress(
 
 
 def test_list_archived_row_shows_archived_progress_and_no_current_streak(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Paused Habit', '--every', 'weekly']).exit_code == 0
     habit = session.exec(select(Habit)).one()

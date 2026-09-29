@@ -62,7 +62,7 @@ def test_stats_on_empty_data_explains_what_to_do_next(session: Session) -> None:
 
 
 def test_stats_shows_active_daily_weekly_and_completion_counts(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     assert _invoke(['add', 'Morning Walk', '--every', 'daily']).exit_code == 0
@@ -85,7 +85,7 @@ def test_stats_shows_active_daily_weekly_and_completion_counts(
 
 
 def test_stats_shows_the_overall_longest_streak(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     assert _invoke(['add', 'Morning Walk', '--every', 'daily']).exit_code == 0
@@ -127,7 +127,7 @@ def test_stats_shows_the_overall_longest_streak(
 
 
 def test_stats_with_zero_completions_explains_what_to_do_next(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
 
@@ -140,7 +140,7 @@ def test_stats_with_zero_completions_explains_what_to_do_next(
 
 
 def test_stats_for_one_habit_shows_repetition_status_completions_and_streak(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     assert _invoke(['add', 'Gym Session', '--every', 'weekly']).exit_code == 0
@@ -183,7 +183,7 @@ def test_stats_for_one_habit_shows_repetition_status_completions_and_streak(
 
 
 def test_stats_for_one_habit_shows_xp_earned_from_its_events(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     assert _invoke(['add', 'Gym Session', '--every', 'weekly']).exit_code == 0
@@ -204,20 +204,20 @@ def test_stats_for_one_habit_shows_xp_earned_from_its_events(
     session.add_all(
         [
             XPEvent(
-                profile_id=active_profile.id,
+                profile_id=single_profile.id,
                 amount=1,
                 reason='HABIT_COMPLETION',
                 habit_id=reading.id,
                 completion_id=reading_done.id,
             ),
             XPEvent(
-                profile_id=active_profile.id,
+                profile_id=single_profile.id,
                 amount=5,
                 reason='MILESTONE_STREAK_3',
                 habit_id=reading.id,
             ),
             XPEvent(
-                profile_id=active_profile.id,
+                profile_id=single_profile.id,
                 amount=1,
                 reason='HABIT_COMPLETION',
                 habit_id=gym.id,
@@ -239,7 +239,7 @@ def test_stats_for_one_habit_shows_xp_earned_from_its_events(
 
 
 def test_stats_for_one_habit_shows_the_latest_completion(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     reading = session.exec(select(Habit).where(Habit.name == 'Read 10 Pages')).one()
@@ -278,7 +278,7 @@ def test_stats_for_one_habit_shows_the_latest_completion(
 
 
 def test_stats_for_a_habit_without_history_shows_zero_xp_and_never_completed(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
 
@@ -302,7 +302,7 @@ def test_stats_for_a_habit_without_history_shows_zero_xp_and_never_completed(
     )
 
 
-def test_stats_selects_a_habit_by_id(session: Session, active_profile: Profile) -> None:
+def test_stats_selects_a_habit_by_id(session: Session, single_profile: Profile) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     habit = session.exec(select(Habit)).one()
 
@@ -314,7 +314,7 @@ def test_stats_selects_a_habit_by_id(session: Session, active_profile: Profile) 
 
 
 def test_stats_selects_a_habit_by_normalized_name(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
 
@@ -325,7 +325,7 @@ def test_stats_selects_a_habit_by_normalized_name(
 
 
 def test_stats_does_not_guess_a_partial_name(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
 
@@ -336,7 +336,7 @@ def test_stats_does_not_guess_a_partial_name(
 
 
 def test_stats_unknown_selector_fails_with_a_next_step(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
 
@@ -348,7 +348,7 @@ def test_stats_unknown_selector_fails_with_a_next_step(
 
 
 def test_stats_excludes_archived_habits_and_history_by_default(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     assert _invoke(['add', 'Gym Session', '--every', 'weekly']).exit_code == 0
@@ -392,7 +392,7 @@ def test_stats_excludes_archived_habits_and_history_by_default(
 
 
 def test_stats_labels_archived_history_when_included(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     assert _invoke(['add', 'Gym Session', '--every', 'weekly']).exit_code == 0
@@ -429,7 +429,7 @@ def test_stats_labels_archived_history_when_included(
 
 
 def test_stats_for_an_archived_habit_requires_explicit_inclusion(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Gym Session', '--every', 'weekly']).exit_code == 0
     assert _invoke(['archive', 'Gym Session', '--force']).exit_code == 0
@@ -443,7 +443,7 @@ def test_stats_for_an_archived_habit_requires_explicit_inclusion(
 
 
 def test_stats_labels_archived_history_for_one_habit(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Gym Session', '--every', 'weekly']).exit_code == 0
     gym = session.exec(select(Habit)).one()
@@ -470,7 +470,7 @@ def test_stats_labels_archived_history_for_one_habit(
 
 
 def test_stats_with_only_archived_habits_points_to_inclusion(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Gym Session', '--every', 'weekly']).exit_code == 0
     assert _invoke(['archive', 'Gym Session', '--force']).exit_code == 0
@@ -484,13 +484,13 @@ def test_stats_with_only_archived_habits_points_to_inclusion(
 
 
 def test_stats_keeps_xp_and_latest_completion_after_archive(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     reading = session.exec(select(Habit).where(Habit.name == 'Read 10 Pages')).one()
     _attach_history(
         session,
-        active_profile,
+        single_profile,
         reading,
         completed_at=datetime(2025, 3, 15, 9, 0),
         period_key='2025-03-15',
@@ -517,13 +517,13 @@ def test_stats_keeps_xp_and_latest_completion_after_archive(
 
 
 def test_stats_keeps_xp_and_latest_completion_after_restore(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     reading = session.exec(select(Habit).where(Habit.name == 'Read 10 Pages')).one()
     _attach_history(
         session,
-        active_profile,
+        single_profile,
         reading,
         completed_at=datetime(2025, 3, 15, 9, 0),
         period_key='2025-03-15',
@@ -546,14 +546,14 @@ def test_stats_keeps_xp_and_latest_completion_after_restore(
 
 
 def test_stats_for_a_deleted_habit_drops_xp_and_completion_history(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     reading = session.exec(select(Habit).where(Habit.name == 'Read 10 Pages')).one()
     habit_id = reading.id
     _attach_history(
         session,
-        active_profile,
+        single_profile,
         reading,
         completed_at=datetime(2025, 3, 15, 9, 0),
         period_key='2025-03-15',
@@ -581,13 +581,13 @@ def test_stats_for_a_deleted_habit_drops_xp_and_completion_history(
 
 
 def test_overall_stats_stay_compact_without_per_habit_rows(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     reading = session.exec(select(Habit).where(Habit.name == 'Read 10 Pages')).one()
     _attach_history(
         session,
-        active_profile,
+        single_profile,
         reading,
         completed_at=datetime(2025, 3, 15, 9, 0),
         period_key='2025-03-15',

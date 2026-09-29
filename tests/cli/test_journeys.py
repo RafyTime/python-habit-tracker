@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from sqlmodel import Session, select
@@ -114,3 +115,61 @@ def test_unexpected_errors_are_not_disguised_as_recoverable_mistakes(
     assert 'habit add' not in result.output.lower()
     assert result.exception is not None
     assert 'storage failed' in str(result.exception)
+
+
+def test_each_milestone_is_claimed_once_through_archive_restore_and_delete(
+    session: Session,
+) -> None:
+    assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
+    first_day = datetime(2026, 1, 1, 12)
+    thresholds = {3, 7, 14, 30}
+
+    for day_number in range(1, 31):
+        with patch('src.core.habit.service.datetime') as local_time:
+            local_time.now.return_value = first_day + timedelta(days=day_number - 1)
+            result = _invoke(['done', 'Read 10 Pages'])
+        assert result.exit_code == 0, result.output
+        assert ('Milestone' in result.stdout) == (day_number in thresholds)
+        if day_number == 14:
+            assert _invoke(['archive', 'Read 10 Pages', '--force']).exit_code == 0
+            assert _invoke(['restore', 'Read 10 Pages']).exit_code == 0
+
+    events = list(session.exec(select(XPEvent)))
+    assert len(session.exec(select(Completion)).all()) == 30
+    assert sum(event.amount for event in events) == 50
+    assert {event.reason for event in events if event.amount == 5} == {
+        f'MILESTONE_STREAK_{target}' for target in thresholds
+    }
+
+    assert _invoke(['archive', 'Read 10 Pages', '--force']).exit_code == 0
+    archived = _invoke(['stats', 'Read 10 Pages', '--archived'])
+    assert archived.exit_code == 0
+    assert '50' in archived.stdout
+    assert _invoke(['restore', 'Read 10 Pages']).exit_code == 0
+
+    deleted = _invoke(['delete', 'Read 10 Pages', '--force'])
+    assert deleted.exit_code == 0
+    assert '30 completions' in deleted.stdout
+    assert '50 XP' in deleted.stdout
+    assert session.exec(select(XPEvent)).all() == []
+
+
+def test_rebuilt_streak_does_not_claim_the_same_milestone_twice(
+    session: Session,
+) -> None:
+    assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
+    first_day = datetime(2026, 1, 1, 12)
+
+    for day_number in (1, 2, 3, 5, 6, 7):
+        with patch('src.core.habit.service.datetime') as local_time:
+            local_time.now.return_value = first_day + timedelta(days=day_number - 1)
+            result = _invoke(['done', 'Read 10 Pages'])
+        assert result.exit_code == 0, result.output
+        assert ('Milestone' in result.stdout) == (day_number == 3)
+
+    events = list(session.exec(select(XPEvent)))
+    assert len(session.exec(select(Completion)).all()) == 6
+    assert sum(event.amount for event in events) == 11
+    assert [event.reason for event in events if event.amount == 5] == [
+        'MILESTONE_STREAK_3'
+    ]

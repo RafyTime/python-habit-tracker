@@ -7,13 +7,13 @@ from src.core.xp import XPService
 
 
 def test_award_habit_completion_creates_event(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ):
     """Test that awarding XP for a completion creates exactly one event."""
     service = XPService(lambda: iter([session]))
 
     habit = Habit(
-        profile_id=active_profile.id, name='Exercise', periodicity=Periodicity.DAILY
+        profile_id=single_profile.id, name='Exercise', periodicity=Periodicity.DAILY
     )
     session.add(habit)
     session.commit()
@@ -27,10 +27,10 @@ def test_award_habit_completion_creates_event(
     session.commit()
 
     xp_event = service.award_habit_completion(
-        session, active_profile.id, habit.id, completion.id
+        session, single_profile.id, habit.id, completion.id
     )
 
-    assert xp_event.profile_id == active_profile.id
+    assert xp_event.profile_id == single_profile.id
     assert xp_event.amount == 1
     assert xp_event.reason == 'HABIT_COMPLETION'
     assert xp_event.habit_id == habit.id
@@ -41,12 +41,12 @@ def test_award_habit_completion_creates_event(
     assert db_event is not None
 
 
-def test_award_habit_completion_idempotent(session: Session, active_profile: Profile):
+def test_award_habit_completion_idempotent(session: Session, single_profile: Profile):
     """Test that awarding XP for the same completion twice is idempotent."""
     service = XPService(lambda: iter([session]))
 
     habit = Habit(
-        profile_id=active_profile.id, name='Exercise', periodicity=Periodicity.DAILY
+        profile_id=single_profile.id, name='Exercise', periodicity=Periodicity.DAILY
     )
     session.add(habit)
     session.commit()
@@ -61,13 +61,13 @@ def test_award_habit_completion_idempotent(session: Session, active_profile: Pro
 
     # Award first time
     xp_event1 = service.award_habit_completion(
-        session, active_profile.id, habit.id, completion.id
+        session, single_profile.id, habit.id, completion.id
     )
     session.commit()
 
     # Award second time (should return same event)
     xp_event2 = service.award_habit_completion(
-        session, active_profile.id, habit.id, completion.id
+        session, single_profile.id, habit.id, completion.id
     )
     session.commit()
 
@@ -82,30 +82,30 @@ def test_award_habit_completion_idempotent(session: Session, active_profile: Pro
     assert len(events) == 1
 
 
-def test_get_total_xp_sums_correctly(session: Session, active_profile: Profile):
+def test_get_total_xp_sums_correctly(session: Session, single_profile: Profile):
     """Test that total XP sums correctly."""
     service = XPService(lambda: iter([session]))
 
     # Initially should be 0
-    total = service.get_total_xp(session, active_profile.id)
+    total = service.get_total_xp(session, single_profile.id)
     assert total == 0
 
     # Add some XP events
-    event1 = XPEvent(profile_id=active_profile.id, amount=1, reason='HABIT_COMPLETION')
-    event2 = XPEvent(profile_id=active_profile.id, amount=1, reason='HABIT_COMPLETION')
-    event3 = XPEvent(profile_id=active_profile.id, amount=1, reason='HABIT_COMPLETION')
+    event1 = XPEvent(profile_id=single_profile.id, amount=1, reason='HABIT_COMPLETION')
+    event2 = XPEvent(profile_id=single_profile.id, amount=1, reason='HABIT_COMPLETION')
+    event3 = XPEvent(profile_id=single_profile.id, amount=1, reason='HABIT_COMPLETION')
     session.add_all([event1, event2, event3])
     session.commit()
 
-    total = service.get_total_xp(session, active_profile.id)
+    total = service.get_total_xp(session, single_profile.id)
     assert total == 3
 
 
-def test_get_total_xp_returns_zero_when_none(session: Session, active_profile: Profile):
+def test_get_total_xp_returns_zero_when_none(session: Session, single_profile: Profile):
     """Test that total XP returns 0 when no events exist."""
     service = XPService(lambda: iter([session]))
 
-    total = service.get_total_xp(session, active_profile.id)
+    total = service.get_total_xp(session, single_profile.id)
     assert total == 0
 
 
@@ -156,61 +156,61 @@ def test_compute_level_progress():
     assert xp_to_next == 5
 
 
-def test_get_total_xp_for_active_profile_auto_ensures_profile(session: Session):
-    """get_total_xp_for_active_profile auto-ensures a usable profile."""
+def test_get_total_xp_for_profile_auto_ensures_profile(session: Session):
+    """get_total_xp_for_profile auto-ensures a usable profile."""
     service = XPService(lambda: iter([session]))
 
-    assert service.get_total_xp_for_active_profile() == 0
+    assert service.get_total_xp_for_profile() == 0
 
 
-def test_get_level_progress_for_active_profile_auto_ensures_profile(
+def test_get_level_progress_for_profile_auto_ensures_profile(
     session: Session,
 ):
-    """get_level_progress_for_active_profile auto-ensures a usable profile."""
+    """get_level_progress_for_profile auto-ensures a usable profile."""
     service = XPService(lambda: iter([session]))
 
-    level, xp_into_level, xp_to_next = service.get_level_progress_for_active_profile()
+    level, xp_into_level, xp_to_next = service.get_level_progress_for_profile()
     assert level == 1
     assert xp_into_level == 0
     assert xp_to_next == 10
 
 
 def test_award_milestone_xp_when_streak_hits_target(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ):
     """Test that awarding milestone XP gives +5 when streak hits a target."""
     service = XPService(lambda: iter([session]))
     habit = Habit(
-        profile_id=active_profile.id, name='Exercise', periodicity=Periodicity.DAILY
+        profile_id=single_profile.id, name='Exercise', periodicity=Periodicity.DAILY
     )
     session.add(habit)
     session.commit()
 
     events = service.award_milestone_xp(
-        session, active_profile.id, habit.id, streak_length=3
+        session, single_profile.id, habit.id, streak_length=3
     )
 
     assert len(events) == 1
     assert events[0].amount == 5
     assert events[0].reason == 'MILESTONE_STREAK_3'
     assert events[0].habit_id == habit.id
-    assert events[0].profile_id == active_profile.id
+    assert events[0].profile_id == single_profile.id
 
 
-def test_award_milestone_xp_idempotent(session: Session, active_profile: Profile):
+def test_award_milestone_xp_idempotent(session: Session, single_profile: Profile):
     """Test that the same milestone is not double-awarded for the same habit."""
     service = XPService(lambda: iter([session]))
     habit = Habit(
-        profile_id=active_profile.id, name='Exercise', periodicity=Periodicity.DAILY
+        profile_id=single_profile.id, name='Exercise', periodicity=Periodicity.DAILY
     )
     session.add(habit)
     session.commit()
 
     events1 = service.award_milestone_xp(
-        session, active_profile.id, habit.id, streak_length=7
+        session, single_profile.id, habit.id, streak_length=7
     )
     events2 = service.award_milestone_xp(
-        session, active_profile.id, habit.id, streak_length=7
+        session, single_profile.id, habit.id, streak_length=7
     )
 
     assert len(events1) == 2  # 3 and 7
@@ -230,21 +230,21 @@ def test_award_milestone_xp_idempotent(session: Session, active_profile: Profile
 
 
 def test_award_milestone_xp_awards_next_milestone_later(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ):
     """Test that hitting a higher streak later awards only new milestones."""
     service = XPService(lambda: iter([session]))
     habit = Habit(
-        profile_id=active_profile.id, name='Exercise', periodicity=Periodicity.DAILY
+        profile_id=single_profile.id, name='Exercise', periodicity=Periodicity.DAILY
     )
     session.add(habit)
     session.commit()
 
     events1 = service.award_milestone_xp(
-        session, active_profile.id, habit.id, streak_length=3
+        session, single_profile.id, habit.id, streak_length=3
     )
     events2 = service.award_milestone_xp(
-        session, active_profile.id, habit.id, streak_length=7
+        session, single_profile.id, habit.id, streak_length=7
     )
 
     assert len(events1) == 1  # 3

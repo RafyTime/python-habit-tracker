@@ -104,7 +104,7 @@ def _emit_snapshot(*, include_done: bool = False) -> None:
         profile = profile_service.ensure_single_profile()
         active_habits = habit_service.list_habits(active_only=True)
 
-        symbol, title = _greeting(profile.username)
+        symbol, title = _greeting(profile.display_name)
         render.heading(title, symbol=symbol)
         render.blank()
 
@@ -122,7 +122,7 @@ def _emit_snapshot(*, include_done: bool = False) -> None:
         )
         completed_count = len(active_habits) - len(due_habits)
         level, xp_into_level, xp_to_next_level = (
-            xp_service.get_level_progress_for_active_profile()
+            xp_service.get_level_progress_for_profile()
         )
         render.stats(
             [

@@ -1,4 +1,4 @@
-"""XP service for managing experience points and levels."""
+"""Award Completion and Milestone XP and calculate Levels."""
 
 from collections.abc import Callable, Iterator
 from math import floor
@@ -9,55 +9,30 @@ from sqlmodel.sql.expression import desc
 from src.core.models import Profile, XPEvent, require_persisted_id
 from src.core.profile.service import ProfileService
 
-# Milestone streak targets (inclusive) - user gets +5 XP once per target per habit
+# Each Habit claims each five-XP Milestone at most once.
 MILESTONE_STREAK_TARGETS: tuple[int, ...] = (3, 7, 14, 30)
 MILESTONE_BONUS_XP: int = 5
 
 
 class XPService:
-    """Service for XP management operations."""
+    """Manage persisted XP events for the single profile."""
 
     def __init__(self, session_factory: Callable[[], Iterator[Session]]) -> None:
-        """
-        Initialize the XP service.
-
-        Args:
-            session_factory: A callable that returns a generator yielding a Session.
-                            Compatible with the get_session() function pattern.
-        """
+        """Accept the session iterator used by the database module."""
         self._session_factory = session_factory
 
     def _get_session(self) -> Session:
         """Get a database session from the factory."""
         return next(self._session_factory())
 
-    def _get_active_profile(self, session: Session) -> Profile:
-        """
-        Get the currently active profile, ensuring one exists.
-
-        Args:
-            session: The database session to use.
-
-        Returns:
-            The active Profile instance.
-        """
+    def _get_profile(self, session: Session) -> Profile:
+        """Get the single profile in this session, creating it if needed."""
         return ProfileService(lambda: iter([session])).ensure_single_profile()
 
     def award_habit_completion(
         self, session: Session, profile_id: int, habit_id: int, completion_id: int
     ) -> XPEvent:
-        """
-        Award XP for a habit completion (idempotent).
-
-        Args:
-            session: The database session to use (must be the same as the completion).
-            profile_id: The ID of the profile receiving XP.
-            habit_id: The ID of the habit that was completed.
-            completion_id: The ID of the completion (used for idempotency).
-
-        Returns:
-            The XPEvent instance (existing or newly created).
-        """
+        """Award one XP once for a persisted Completion."""
         # Check if XP already awarded for this completion
         existing = session.exec(
             select(XPEvent).where(XPEvent.completion_id == completion_id)
@@ -87,18 +62,7 @@ class XPService:
         habit_id: int,
         streak_length: int,
     ) -> list[XPEvent]:
-        """
-        Award milestone XP for streak targets reached (idempotent per habit/target).
-
-        Args:
-            session: The database session to use.
-            profile_id: The ID of the profile receiving XP.
-            habit_id: The ID of the habit that reached the streak.
-            streak_length: Current longest streak for the habit.
-
-        Returns:
-            List of newly created XPEvent instances (empty if no new milestones).
-        """
+        """Claim each reached Milestone once for this Habit identity."""
         newly_awarded: list[XPEvent] = []
 
         for target in MILESTONE_STREAK_TARGETS:
@@ -132,16 +96,7 @@ class XPService:
         return newly_awarded
 
     def get_total_xp(self, session: Session, profile_id: int) -> int:
-        """
-        Get the total XP for a profile.
-
-        Args:
-            session: The database session to use.
-            profile_id: The ID of the profile.
-
-        Returns:
-            The total XP (0 if no events exist).
-        """
+        """Sum the profile's retained XP events."""
         result = session.exec(
             select(func.sum(XPEvent.amount)).where(XPEvent.profile_id == profile_id)
         ).one()
@@ -149,29 +104,11 @@ class XPService:
         return int(result) if result is not None else 0
 
     def compute_level(self, total_xp: int) -> int:
-        """
-        Compute the level from total XP.
-
-        Formula: level = 1 + floor(total_xp / 10)
-
-        Args:
-            total_xp: The total XP amount.
-
-        Returns:
-            The computed level.
-        """
+        """Return Level 1 plus one Level for each ten XP."""
         return 1 + floor(total_xp / 10)
 
     def compute_level_progress(self, total_xp: int) -> tuple[int, int, int]:
-        """
-        Compute level progress information.
-
-        Args:
-            total_xp: The total XP amount.
-
-        Returns:
-            A tuple of (level, xp_into_level, xp_to_next_level).
-        """
+        """Return Level, XP earned within it, and XP needed for the next Level."""
         level = self.compute_level(total_xp)
         xp_into_level = total_xp % 10
         xp_to_next_level = 10 - xp_into_level
@@ -179,10 +116,10 @@ class XPService:
         return (level, xp_into_level, xp_to_next_level)
 
     def get_total_xp_for_habit(self, habit_id: int) -> int:
-        """Return retained XP earned by one habit for the active profile."""
+        """Return retained XP earned by one habit for the profile."""
         session = self._get_session()
-        profile = self._get_active_profile(session)
-        profile_id = require_persisted_id(profile.id, 'Active profile')
+        profile = self._get_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Profile')
         result = session.exec(
             select(func.sum(XPEvent.amount)).where(
                 XPEvent.profile_id == profile_id,
@@ -191,40 +128,26 @@ class XPService:
         ).one()
         return int(result) if result is not None else 0
 
-    def get_total_xp_for_active_profile(self) -> int:
-        """
-        Convenience method to get total XP for the active profile.
-
-        Returns:
-            The total XP for the active profile.
-
-        Raises:
-        """
+    def get_total_xp_for_profile(self) -> int:
+        """Return the single profile's total retained XP."""
         session = self._get_session()
-        profile = self._get_active_profile(session)
-        profile_id = require_persisted_id(profile.id, 'Active profile')
+        profile = self._get_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Profile')
         return self.get_total_xp(session, profile_id)
 
-    def get_level_progress_for_active_profile(self) -> tuple[int, int, int]:
-        """
-        Convenience method to get level progress for the active profile.
-
-        Returns:
-            A tuple of (level, xp_into_level, xp_to_next_level).
-
-        Raises:
-        """
+    def get_level_progress_for_profile(self) -> tuple[int, int, int]:
+        """Return the single profile's Level progress."""
         session = self._get_session()
-        profile = self._get_active_profile(session)
-        profile_id = require_persisted_id(profile.id, 'Active profile')
+        profile = self._get_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Profile')
         total_xp = self.get_total_xp(session, profile_id)
         return self.compute_level_progress(total_xp)
 
-    def list_recent_events_for_active_profile(self, limit: int = 10) -> list[XPEvent]:
-        """Return recent XP events for the active profile, newest first."""
+    def list_recent_events_for_profile(self, limit: int = 10) -> list[XPEvent]:
+        """Return recent XP events for the profile, newest first."""
         session = self._get_session()
-        profile = self._get_active_profile(session)
-        profile_id = require_persisted_id(profile.id, 'Active profile')
+        profile = self._get_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Profile')
         statement = (
             select(XPEvent)
             .where(XPEvent.profile_id == profile_id)

@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 from sqlmodel import Session, SQLModel, create_engine
 
-from src.core.models import AppState, Profile
+from src.core.models import Profile
 
 
 @pytest.fixture(name='session')
@@ -36,22 +36,12 @@ def mock_get_session(session: Session):
         yield
 
 
-@pytest.fixture(name='active_profile')
-def active_profile_fixture(session: Session) -> Profile:
-    """
-    Creates a profile and sets it as the active profile in AppState.
-
-    This fixture properly handles the commit order to ensure profile.id is available
-    before setting active_profile_id in AppState.
-    """
-    profile = Profile(username='testuser')
+@pytest.fixture(name='single_profile')
+def single_profile_fixture(session: Session) -> Profile:
+    """Create the tracker's profile for service tests."""
+    profile = Profile(display_name='testuser')
     session.add(profile)
     session.commit()
     session.refresh(profile)
-
-    # Now that profile.id is set, create/update AppState
-    app_state = AppState(id=1, active_profile_id=profile.id)
-    session.add(app_state)
-    session.commit()
 
     return profile

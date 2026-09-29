@@ -4,7 +4,6 @@ import sys
 from datetime import datetime
 from typing import Annotated
 
-from rich.console import Console
 from rich.prompt import Confirm
 from typer import Exit, Option
 
@@ -12,8 +11,6 @@ from src.cli import render
 from src.core.db import get_session
 from src.core.db_seeder import seed_db
 from src.core.habit import HabitService
-
-console = Console()
 
 
 def _can_prompt() -> bool:
@@ -52,14 +49,13 @@ def seed(
             render.warning('Cancelled.')
             raise Exit()
 
-    with console.status('Loading sample data...', spinner='dots') as status:
+    with render.console.status('Loading sample data...', spinner='dots'):
         session_iter = get_session()
         session = next(session_iter)
         try:
             seed_db(
                 session_factory=lambda: iter((session,)),
                 reference_time=at,
-                progress_callback=status.update,
             )
         finally:
             closer = getattr(session_iter, 'close', None)

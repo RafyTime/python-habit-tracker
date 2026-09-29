@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from sqlmodel import Field, SQLModel, UniqueConstraint
+from sqlmodel import CheckConstraint, Field, SQLModel, UniqueConstraint
 
 
 class Periodicity(StrEnum):
@@ -27,14 +27,11 @@ def require_persisted_id(record_id: int | None, record_name: str) -> int:
 
 class Profile(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    username: str = Field(unique=True, index=True)
+    display_name: str
     created_at: datetime = Field(default_factory=datetime.now)
     after_action: AfterAction = Field(default=AfterAction.HOME)
 
-
-class AppState(SQLModel, table=True):
-    id: int = Field(default=1, primary_key=True)
-    active_profile_id: int | None = Field(default=None, foreign_key='profile.id')
+    __table_args__ = (CheckConstraint('id = 1', name='single_profile'),)
 
 
 class Habit(SQLModel, table=True):

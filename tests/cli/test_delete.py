@@ -59,11 +59,11 @@ def _history(
 
 
 def test_delete_force_by_id_prints_removed_impact_and_erases_records(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     habit = session.exec(select(Habit)).one()
-    _history(session, active_profile, habit, completions=2, extra_xp=5)
+    _history(session, single_profile, habit, completions=2, extra_xp=5)
     completion_ids = [
         item.id
         for item in session.exec(
@@ -88,11 +88,11 @@ def test_delete_force_by_id_prints_removed_impact_and_erases_records(
 
 
 def test_delete_confirmation_names_the_habit_and_actual_impact(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     habit = session.exec(select(Habit)).one()
-    _history(session, active_profile, habit, completions=2, extra_xp=5)
+    _history(session, single_profile, habit, completions=2, extra_xp=5)
 
     result = _invoke(['delete', 'Read 10 Pages'], input='y\n')
 
@@ -108,11 +108,11 @@ def test_delete_confirmation_names_the_habit_and_actual_impact(
 
 
 def test_delete_cancellation_shows_impact_and_leaves_records_unchanged(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     habit = session.exec(select(Habit)).one()
-    _history(session, active_profile, habit, completions=2, extra_xp=5)
+    _history(session, single_profile, habit, completions=2, extra_xp=5)
 
     result = _invoke(['delete', 'Read 10 Pages'], input='n\n')
 
@@ -131,11 +131,11 @@ def test_delete_cancellation_shows_impact_and_leaves_records_unchanged(
 
 
 def test_delete_force_by_normalized_name_reports_the_records_removed(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     habit = session.exec(select(Habit)).one()
-    _history(session, active_profile, habit, completions=2, extra_xp=5)
+    _history(session, single_profile, habit, completions=2, extra_xp=5)
 
     result = _invoke(['delete', 'read_10_pages', '--force'])
 
@@ -150,7 +150,7 @@ def test_delete_force_by_normalized_name_reports_the_records_removed(
 
 
 def test_delete_can_remove_an_archived_habit(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     assert _invoke(['done', 'Read 10 Pages']).exit_code == 0
@@ -166,14 +166,14 @@ def test_delete_can_remove_an_archived_habit(
 
 
 def test_delete_keeps_remaining_xp_and_history_for_other_habits(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     _add_daily('Gym Session')
     reading = session.exec(select(Habit).where(Habit.name == 'Read 10 Pages')).one()
     gym = session.exec(select(Habit).where(Habit.name == 'Gym Session')).one()
-    _history(session, active_profile, reading, completions=2, extra_xp=5)
-    _history(session, active_profile, gym, completions=1)
+    _history(session, single_profile, reading, completions=2, extra_xp=5)
+    _history(session, single_profile, gym, completions=1)
 
     result = _invoke(['delete', 'Read 10 Pages', '--force'])
 
@@ -190,7 +190,7 @@ def test_delete_keeps_remaining_xp_and_history_for_other_habits(
 
 
 def test_non_interactive_delete_without_selector_fails_with_an_example(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
 
@@ -202,7 +202,7 @@ def test_non_interactive_delete_without_selector_fails_with_an_example(
 
 
 def test_delete_unknown_selector_fails_without_changing_data(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
 
@@ -215,7 +215,7 @@ def test_delete_unknown_selector_fails_without_changing_data(
 
 
 def test_delete_does_not_guess_a_partial_name(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
 
@@ -227,7 +227,7 @@ def test_delete_does_not_guess_a_partial_name(
 
 
 def test_interactive_delete_can_select_an_archived_habit(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     _add_daily('Gym Session')
@@ -252,7 +252,7 @@ def test_interactive_delete_can_select_an_archived_habit(
 
 
 def test_interactive_delete_cancel_leaves_data_unchanged(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     assert _invoke(['done', 'Read 10 Pages']).exit_code == 0

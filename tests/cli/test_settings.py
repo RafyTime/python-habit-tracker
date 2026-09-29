@@ -46,7 +46,7 @@ def test_settings_updates_name_and_after_action_without_prompts(
 
     assert result.exit_code == 0
     profile = session.exec(select(Profile)).one()
-    assert profile.username == 'Alex'
+    assert profile.display_name == 'Alex'
     assert profile.after_action == AfterAction.EXIT
     assert 'Alex' in result.stdout
     assert 'Exit immediately' in result.stdout

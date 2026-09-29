@@ -104,7 +104,7 @@ def _run_start() -> None:
             'Daily means once per calendar day. Weekly means once per ISO week.'
         )
 
-    name = _ask_display_name(profile.username)
+    name = _ask_display_name(profile.display_name)
     if name:
         profile = profile_service.update_display_name(name)
 
@@ -160,7 +160,7 @@ def _run_start() -> None:
     if relevant_habit is not None:
         _offer_focused_stats(relevant_habit)
 
-    _finish(profile.username)
+    _finish(profile.display_name)
 
 
 def _offer_first_completion(habit_service: HabitService, habit: Habit) -> Habit:
@@ -209,7 +209,7 @@ def _offer_focused_stats(habit: Habit) -> None:
 def _finish(display_name: str) -> None:
     with render.view():
         render.success(f"You're ready, {display_name}.")
-        render.note('Run [cyan]habit[/cyan] whenever you want to check in.')
+        render.note('Run [cyan]habit[/cyan] whenever you want to see what is Due.')
         render.note('Full user guide:')
         render.note(USER_GUIDE_URL)
     if _choose_ending() == 'home':
