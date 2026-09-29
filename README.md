@@ -42,7 +42,7 @@ activate it yourself:
 source .venv/bin/activate
 ```
 
-Both `habit` and `habits` can be used interchangeably and run the same tracker, so pick what feels more natural!. The examples below use `habit`.
+The installed command is `habit`.
 
 ## Everyday commands
 

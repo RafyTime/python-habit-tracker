@@ -20,7 +20,7 @@ The primary seam is the command line: commands persist state, then return clear 
 4. As a user, I want to set one display name and choose whether interactive actions return home, so that the interface fits how I use it without introducing account management.
 5. As a user, I want to create a daily or weekly habit with an optional icon, so that I can track a clear recurring task and recognize it quickly.
 6. As a user, I want to find a habit by ID or a forgiving form of its name, so that spaces and capitalization do not make commands tedious.
-7. As a user, I want to see my current habits and those due this period, so that I know what to do next.
+7. As a user, I want to see my Active Habits and those Due this Period, so that I know what to do next.
 8. As a user, I want to complete a habit once per relevant period, so that accidental duplicate completions do not inflate my streak or XP.
 9. As a user, I want to archive a habit and restore it later, so that I can pause tracking without losing completion and XP history.
 10. As a user, I want to permanently delete a habit only after a specific warning, so that I know how many completions and how much XP will be removed.

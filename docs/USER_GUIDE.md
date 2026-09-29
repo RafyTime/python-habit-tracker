@@ -58,7 +58,7 @@ source .venv/bin/activate
 source .venv/bin/activate.fish
 ```
 
-Both `habit` and `habits` are accepted. This guide uses `habit`.
+The installed command is `habit`.
 
 Run `habit --help` for the command list, or `habit COMMAND --help` for one
 command's arguments and options.
@@ -304,6 +304,7 @@ default database. This is a separate database, not a reset command.
 | A Habit is already done. | A Habit has only one Completion per Daily or Weekly Period. Wait for the next Period. |
 | A name already exists or belongs to an Archived Habit. | Choose a different name, or restore the Archived Habit instead of creating a duplicate. |
 | Sample data warns that it will mix with existing Habits. | Cancel to keep personal data separate. Continue or use `--force` only when mixing is deliberate. |
+| An older development database has a schema error after updating the project. | Back up any data you need, then point `DATABASE_URL` to a fresh SQLite file. Development databases do not have migration support. |
 | You see different data from another terminal or folder. | Run from the project directory and check `DATABASE_URL` in `.env`. Relative SQLite paths belong to the directory where you run the command. |
 | PowerShell blocks `Activate.ps1`. | Use `uv run habit ...` instead, or follow your organisation's PowerShell policy before changing execution settings. |
 
