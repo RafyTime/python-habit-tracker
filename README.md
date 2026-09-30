@@ -3,13 +3,19 @@
 [![Test](https://github.com/RafyTime/python-habit-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/RafyTime/python-habit-tracker/actions/workflows/ci.yml)
 [![Coverage](https://coverage-badge.samuelcolvin.workers.dev/RafyTime/python-habit-tracker.svg)](https://coverage-badge.samuelcolvin.workers.dev/redirect/RafyTime/python-habit-tracker)
 
-A local command-line tracker for positive Daily and Weekly Habits. Record one
-Completion per Period, review Stats, and keep or remove Habit history on your
-terms.
+A simple command-line habit tracker built with Python and Typer. Part of my Portfolio Project for IU **Object-Oriented and Functional Programming with Python**.
 
-## Get running
+## Table of Contents
 
-You need Python 3.14 or later and [uv](https://docs.astral.sh/uv/).
+- [Get Running](#get-running)
+- [Everyday Commands](#everyday-commands)
+- [Evaluate with Sample Data](#evaluate-with-sample-data)
+- [Verify the Project](#verify-the-project)
+- [Documentation](#documentation)
+
+## Get Running
+
+**Required**: You need Python 3.14 or later and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone https://github.com/RafyTime/python-habit-tracker.git
@@ -24,22 +30,19 @@ the project environment for you:
 uv run habit today
 ```
 
-Once `.venv` is active, use `habit ...` directly. VS Code, Cursor, and
+Once `.venv` is active, you can use `habit ...` directly. VS Code, Cursor, and
 JetBrains integrated terminals commonly activate it for you. Otherwise,
 activate it yourself:
 
-```powershell
+```bash
 # PowerShell
 .venv\Scripts\Activate.ps1
-```
 
-```bash
 # bash or zsh
 source .venv/bin/activate
 ```
 
-Both `habit` and `habits` run the same tracker. The examples below use
-`habit`.
+The installed command is `habit`.
 
 ## Everyday commands
 
@@ -48,7 +51,7 @@ Both `habit` and `habits` run the same tracker. The examples below use
 habit today
 
 # Add a Habit. Use daily, day, weekly, or week for --every.
-habit add "Read 10 pages" --every daily
+habit add "Read 10 pages" --every day
 
 # Record this Period's Completion.
 habit done "Read 10 pages"
@@ -89,10 +92,5 @@ It checks formatting, linting, source types, tests, and coverage.
 ## Documentation
 
 Generated help is always available with `habit --help` or
-`habit COMMAND --help`.
-
-- [User Guide](docs/USER_GUIDE.md) for setup, everyday use, lifecycle
-  actions, Sample data, and troubleshooting. It describes the current Phase
-  2 tracker.
-- [Phase 1 conception](docs/phase_1/CONCEPTION_PHASE.md) for the original
-  project proposal and design context. It is historical material.
+`habit COMMAND --help`. For a more detailed guide, including setup, everyday use, lifecycle
+actions, Sample data, and troubleshooting, see the [User Guide](docs/USER_GUIDE.md).

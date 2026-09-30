@@ -6,7 +6,7 @@
 
 **Status:** done
 
-- [x] The temporary `app` and `cli` executable aliases are removed, leaving only `habit` & `habits`.
+- [x] The temporary `app`, `cli`, and `habits` executable aliases are removed, leaving only `habit`.
 - [x] The former habit, overview, analytics, and XP command groups and their obsolete tests are removed rather than retained as hidden aliases.
 - [x] The final public commands match the approved CLI experience specification.
 - [x] Typer continues to generate help, with commands grouped into Everyday, Progress, Manage, and Get started and evaluate panels.

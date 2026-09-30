@@ -13,9 +13,9 @@ class Settings(BaseSettings):
     )
 
     # Project Details
-    PROJECT_NAME: str = 'Project Name'
-    PROJECT_VERSION: str = '0.0.0'
-    PROJECT_DESCRIPTION: str = 'Add your description here'
+    PROJECT_NAME: str = 'Habits.py'
+    PROJECT_VERSION: str = '0.1.0'
+    PROJECT_DESCRIPTION: str = 'Track Daily and Weekly Habits from the command line.'
     # Environment
     ENVIRONMENT: Literal['local', 'dev', 'prod'] = 'local'
     DEBUG: bool = False

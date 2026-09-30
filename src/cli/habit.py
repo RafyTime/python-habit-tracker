@@ -7,8 +7,9 @@ from rich.prompt import Confirm, Prompt
 from typer import Argument, Exit, Option
 
 from src.cli import render
-from src.core.analytics import CompletionDTO, CurrentStreakDTO, HabitDTO
+from src.core.analytics import CurrentStreakDTO
 from src.core.analytics import current_streak_for_habit as calculate_current_streak
+from src.core.analytics.adapters import completion_to_dto, habit_to_dto
 from src.core.db import get_session
 from src.core.habit import (
     HabitAlreadyCompletedForPeriod,
@@ -18,7 +19,7 @@ from src.core.habit import (
     HabitNotFound,
     HabitService,
 )
-from src.core.models import Completion, Habit, Periodicity, require_persisted_id
+from src.core.models import Habit, Periodicity, require_persisted_id
 from src.core.xp import XPService
 
 _LIST_ICON = '☰'
@@ -50,10 +51,6 @@ def _can_prompt() -> bool:
     return sys.stdin.isatty()
 
 
-def _repetition_label(periodicity: Periodicity) -> str:
-    return 'Daily' if periodicity == Periodicity.DAILY else 'Weekly'
-
-
 def _parse_repetition(value: str) -> Periodicity | None:
     return _REPETITION_ALIASES.get(value.strip().casefold())
 
@@ -74,24 +71,6 @@ def _current_period_phrase(periodicity: Periodicity) -> str:
 def _streak_label(streak: int, periodicity: Periodicity) -> str:
     unit = 'day' if periodicity == Periodicity.DAILY else 'week'
     return f'{streak}-{unit} streak'
-
-
-def _habit_dto(habit: Habit) -> HabitDTO:
-    return HabitDTO(
-        id=require_persisted_id(habit.id, 'Habit'),
-        name=habit.name,
-        periodicity=habit.periodicity,
-        created_at=habit.created_at,
-        is_active=habit.is_active,
-    )
-
-
-def _completion_dto(completion: Completion) -> CompletionDTO:
-    return CompletionDTO(
-        habit_id=completion.habit_id,
-        completed_at=completion.completed_at,
-        period_key=completion.period_key,
-    )
 
 
 def _progress_label(habit: Habit, due_ids: set[int]) -> str:
@@ -291,7 +270,9 @@ def add(
 
     label = render.labelled_habit(habit.name, habit.icon)
     with render.view():
-        render.success(f'{label} is set as a {_repetition_label(periodicity)} habit.')
+        render.success(
+            f'{label} is set as a {render.repetition_label(periodicity)} habit.'
+        )
         render.next_step('see it with [cyan]habit list[/cyan].')
 
 
@@ -334,7 +315,7 @@ def show_habits(
             for habit in service.get_due_habits(when=now)
         }
         completion_dtos = [
-            _completion_dto(completion)
+            completion_to_dto(completion)
             for completion in service.list_completions(
                 habit_ids=[require_persisted_id(habit.id, 'Habit') for habit in habits]
             )
@@ -345,7 +326,7 @@ def show_habits(
         row_styles: list[str | None] = []
         for habit in habits:
             streak = calculate_current_streak(
-                _habit_dto(habit), completion_dtos, now=now
+                habit_to_dto(habit), completion_dtos, now=now
             )
             rows.append(
                 [
@@ -353,7 +334,7 @@ def show_habits(
                     render.labelled_habit(habit.name, habit.icon),
                     _progress_label(habit, due_ids),
                     _current_streak_cell(habit, streak),
-                    _repetition_label(habit.periodicity),
+                    render.repetition_label(habit.periodicity),
                 ]
             )
             row_styles.append('yellow' if not habit.is_active else None)
@@ -388,7 +369,7 @@ def done(
             raise Exit(1)
 
     habit_id = require_persisted_id(habit.id, 'Habit')
-    level_before, _, _ = xp_service.get_level_progress_for_active_profile()
+    level_before, _, _ = xp_service.get_level_progress_for_profile()
     try:
         completion, milestone_events = service.complete_habit(habit_id)
     except HabitArchived:
@@ -403,14 +384,14 @@ def done(
     label = render.labelled_habit(habit.name, habit.icon)
     period = _current_period_phrase(habit.periodicity)
     current = calculate_current_streak(
-        _habit_dto(habit),
+        habit_to_dto(habit),
         [
-            _completion_dto(item)
+            completion_to_dto(item)
             for item in service.list_completions(habit_ids=[habit_id])
         ],
         now=completion.completed_at,
     )
-    level_after, _, _ = xp_service.get_level_progress_for_active_profile()
+    level_after, _, _ = xp_service.get_level_progress_for_profile()
     due_habits = service.get_due_habits()
     with render.view():
         render.success(f'{label} is done for {period}.')
@@ -440,7 +421,9 @@ def _icon_prefix(icon: str | None) -> str:
 def _choice_label(habit: Habit) -> str:
     prefix = _icon_prefix(habit.icon)
     status = '' if habit.is_active else ' — archived'
-    return f'{prefix}{habit.name} ({_repetition_label(habit.periodicity)}){status}'
+    return (
+        f'{prefix}{habit.name} ({render.repetition_label(habit.periodicity)}){status}'
+    )
 
 
 def _choose_habit(habits: list[Habit], prompt: str) -> Habit:

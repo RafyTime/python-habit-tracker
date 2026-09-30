@@ -6,7 +6,7 @@ from sqlmodel import Session, select
 from typer.testing import CliRunner
 
 from main import app
-from src.core.models import AppState, Completion, Habit, Profile, XPEvent
+from src.core.models import Completion, Habit, Profile, XPEvent
 
 runner = CliRunner()
 
@@ -17,7 +17,7 @@ def _invoke(args: list[str], **kwargs):
 
 
 def test_done_by_id_persists_completion_and_shows_restrained_feedback(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     created = _invoke(['add', 'Read 10 Pages', '--every', 'daily'])
     assert created.exit_code == 0
@@ -42,7 +42,7 @@ def test_done_by_id_persists_completion_and_shows_restrained_feedback(
 
 
 def test_done_feedback_reports_current_streak_not_longest_streak(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     habit = session.exec(select(Habit)).one()
@@ -66,7 +66,7 @@ def test_done_feedback_reports_current_streak_not_longest_streak(
 
 
 def test_done_by_name_is_case_insensitive_and_keeps_the_display_name(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     created = _invoke(['add', 'Read 10 Pages', '--every', 'daily'])
     assert created.exit_code == 0
@@ -84,7 +84,7 @@ def test_done_by_name_is_case_insensitive_and_keeps_the_display_name(
 
 
 def test_done_accepts_underscores_without_changing_the_stored_name(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     created = _invoke(['add', 'Read 10 Pages', '--every', 'daily'])
     assert created.exit_code == 0
@@ -102,7 +102,7 @@ def test_done_accepts_underscores_without_changing_the_stored_name(
 
 
 def test_done_matches_collapsed_whitespace_without_changing_the_stored_name(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     created = _invoke(['add', 'Read 10 Pages', '--every', 'daily'])
     assert created.exit_code == 0
@@ -116,7 +116,7 @@ def test_done_matches_collapsed_whitespace_without_changing_the_stored_name(
 
 
 def test_done_does_not_choose_a_prefix_or_fuzzy_name_match(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     created = _invoke(['add', 'Read 10 Pages', '--every', 'daily'])
     assert created.exit_code == 0
@@ -134,7 +134,7 @@ def test_done_does_not_choose_a_prefix_or_fuzzy_name_match(
 
 
 def test_non_interactive_done_without_selector_fails_with_an_example(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     created = _invoke(['add', 'Read 10 Pages', '--every', 'daily'])
     assert created.exit_code == 0
@@ -147,7 +147,7 @@ def test_non_interactive_done_without_selector_fails_with_an_example(
 
 
 def test_interactive_done_opens_a_due_habit_picker(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     assert _invoke(['add', 'Gym Session', '--every', 'weekly']).exit_code == 0
@@ -175,7 +175,7 @@ def test_interactive_done_opens_a_due_habit_picker(
 
 
 def test_interactive_done_with_nothing_due_fails_clearly(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     assert _invoke(['done', 'Read 10 Pages']).exit_code == 0
@@ -192,7 +192,7 @@ def test_interactive_done_with_nothing_due_fails_clearly(
 
 
 def test_interactive_done_cancel_does_not_record_a_completion(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
 
@@ -209,7 +209,7 @@ def test_interactive_done_cancel_does_not_record_a_completion(
 
 
 def test_duplicate_period_completion_fails_without_a_second_record(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     first = _invoke(['done', 'Read 10 Pages'])
@@ -229,7 +229,7 @@ def test_duplicate_period_completion_fails_without_a_second_record(
 
 
 def test_duplicate_weekly_completion_fails_without_a_second_record(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Gym Session', '--every', 'weekly']).exit_code == 0
     first = _invoke(['done', 'Gym Session'])
@@ -245,7 +245,7 @@ def test_duplicate_weekly_completion_fails_without_a_second_record(
 
 
 def test_done_rejects_an_archived_habit(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     habit = session.exec(select(Habit)).one()
@@ -261,7 +261,7 @@ def test_done_rejects_an_archived_habit(
 
 
 def test_done_fails_when_the_habit_is_missing(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     result = _invoke(['done', 'Unknown Habit'])
 
@@ -273,7 +273,7 @@ def test_done_fails_when_the_habit_is_missing(
 
 
 def test_done_fails_when_the_id_is_missing(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     result = _invoke(['done', '99'])
 
@@ -283,7 +283,7 @@ def test_done_fails_when_the_id_is_missing(
 
 
 def test_done_awards_existing_completion_xp(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
 
@@ -294,11 +294,11 @@ def test_done_awards_existing_completion_xp(
     assert len(events) == 1
     assert events[0].amount == 1
     assert events[0].reason == 'HABIT_COMPLETION'
-    assert events[0].profile_id == active_profile.id
+    assert events[0].profile_id == single_profile.id
 
 
 def test_done_celebrates_a_streak_milestone(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     from datetime import datetime as real_datetime
 
@@ -357,11 +357,10 @@ def test_done_milestone_feedback_survives_a_closed_session(
     monkeypatch.setattr('src.cli.habit.get_session', closing_get_session)
 
     with Session(engine) as session:
-        profile = Profile(username='testuser')
+        profile = Profile(display_name='testuser')
         session.add(profile)
         session.commit()
         session.refresh(profile)
-        session.add(AppState(id=1, active_profile_id=profile.id))
         habit = Habit(
             profile_id=profile.id,
             name='Read 10 Pages',
@@ -400,12 +399,12 @@ def test_done_milestone_feedback_survives_a_closed_session(
     assert 'HABIT_COMPLETION' in reasons
 
 
-def test_done_celebrates_a_level_up(session: Session, active_profile: Profile) -> None:
+def test_done_celebrates_a_level_up(session: Session, single_profile: Profile) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     for _ in range(9):
         session.add(
             XPEvent(
-                profile_id=active_profile.id,
+                profile_id=single_profile.id,
                 amount=1,
                 reason='HABIT_COMPLETION',
             )
@@ -420,7 +419,7 @@ def test_done_celebrates_a_level_up(session: Session, active_profile: Profile) -
 
 
 def test_today_reflects_a_completion_immediately(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     assert _invoke(['add', 'Gym Session', '--every', 'weekly']).exit_code == 0

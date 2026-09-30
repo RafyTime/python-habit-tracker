@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from sqlmodel import Session, select
 from sqlmodel.sql.expression import col
 
-from src.core.analytics.dto import CompletionDTO, HabitDTO
+from src.core.analytics.adapters import completion_to_dto, habit_to_dto
 from src.core.analytics.functions import longest_streak_for_habit
 from src.core.habit.errors import (
     HabitAlreadyCompletedForPeriod,
@@ -104,16 +104,8 @@ class HabitService:
         """Get a database session from the factory."""
         return next(self._session_factory())
 
-    def _get_active_profile(self, session: Session) -> Profile:
-        """
-        Get the currently active profile, ensuring one exists.
-
-        Args:
-            session: The database session to use.
-
-        Returns:
-            The active Profile instance.
-        """
+    def _get_profile(self, session: Session) -> Profile:
+        """Get the single profile in this session, creating it if needed."""
         return ProfileService(lambda: iter([session])).ensure_single_profile()
 
     def create_habit(
@@ -123,25 +115,10 @@ class HabitService:
         created_at: datetime | None = None,
         icon: str | None = None,
     ) -> Habit:
-        """
-        Create a new habit for the active profile.
-
-        Args:
-            name: The name of the habit (will be normalized by trimming).
-            periodicity: The periodicity type (DAILY or WEEKLY).
-            created_at: Optional creation timestamp. Defaults to now.
-            icon: Optional short single-line Unicode icon.
-
-        Returns:
-            The created Habit instance.
-
-        Raises:
-            HabitAlreadyExists: If a habit with the same identity already exists.
-            HabitArchivedNameExists: If an archived habit already uses that identity.
-        """
+        """Create a Habit with a unique normalized name and fixed Periodicity."""
         session = self._get_session()
-        profile = self._get_active_profile(session)
-        profile_id = require_persisted_id(profile.id, 'Active profile')
+        profile = self._get_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Profile')
 
         display_name = name.strip()
         if not display_name:
@@ -170,20 +147,9 @@ class HabitService:
         active_only: bool = True,
         periodicity: Periodicity | None = None,
     ) -> list[Habit]:
-        """
-        List habits for the active profile.
-
-        Args:
-            active_only: If True, only return active habits. Defaults to True.
-            periodicity: Optional filter by periodicity type.
-
-        Returns:
-            A list of Habit instances matching the criteria.
-
-        Raises:
-        """
+        """List Active Habits by default, optionally filtering by Periodicity."""
         session = self._get_session()
-        profile = self._get_active_profile(session)
+        profile = self._get_profile(session)
 
         statement = select(Habit).where(Habit.profile_id == profile.id)
 
@@ -203,8 +169,8 @@ class HabitService:
         comparison is case-insensitive. Prefix and fuzzy matches are rejected.
         """
         session = self._get_session()
-        profile = self._get_active_profile(session)
-        profile_id = require_persisted_id(profile.id, 'Active profile')
+        profile = self._get_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Profile')
 
         stripped = selector.strip()
         if stripped.isdigit():
@@ -269,8 +235,8 @@ class HabitService:
             )
 
         session = self._get_session()
-        profile = self._get_active_profile(session)
-        profile_id = require_persisted_id(profile.id, 'Active profile')
+        profile = self._get_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Profile')
         habit = self._owned_habit(session, profile_id, habit_id)
 
         if not habit.is_active and not include_archived:
@@ -306,8 +272,8 @@ class HabitService:
     def restore_habit(self, habit_id: int) -> Habit:
         """Return an archived habit to active tracking without changing history."""
         session = self._get_session()
-        profile = self._get_active_profile(session)
-        profile_id = require_persisted_id(profile.id, 'Active profile')
+        profile = self._get_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Profile')
         habit = self._owned_habit(session, profile_id, habit_id)
 
         if habit.is_active:
@@ -333,39 +299,15 @@ class HabitService:
         habit_id = require_persisted_id(habit.id, 'Habit')
         completions = self.list_completions(habit_ids=[habit_id])
         return longest_streak_for_habit(
-            HabitDTO(
-                id=habit_id,
-                name=habit.name,
-                periodicity=habit.periodicity,
-                created_at=habit.created_at,
-                is_active=habit.is_active,
-            ),
-            [
-                CompletionDTO(
-                    habit_id=item.habit_id,
-                    completed_at=item.completed_at,
-                    period_key=item.period_key,
-                )
-                for item in completions
-            ],
+            habit_to_dto(habit),
+            [completion_to_dto(item) for item in completions],
         )
 
     def archive_habit(self, habit_id: int) -> Habit:
-        """
-        Archive a habit by setting is_active=False.
-
-        Args:
-            habit_id: The ID of the habit to archive.
-
-        Returns:
-            The archived Habit instance.
-
-        Raises:
-            HabitNotFound: If the habit is not found or doesn't belong to the active profile.
-        """
+        """Archive a Habit while retaining its Completions and XP events."""
         session = self._get_session()
-        profile = self._get_active_profile(session)
-        profile_id = require_persisted_id(profile.id, 'Active profile')
+        profile = self._get_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Profile')
 
         habit = session.get(Habit, habit_id)
         if not habit or habit.profile_id != profile_id:
@@ -398,28 +340,17 @@ class HabitService:
     def preview_delete(self, habit_id: int) -> HabitDeleteImpact:
         """Return the completion and XP impact of deleting a habit without changing data."""
         session = self._get_session()
-        profile = self._get_active_profile(session)
-        profile_id = require_persisted_id(profile.id, 'Active profile')
+        profile = self._get_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Profile')
         habit = self._owned_habit(session, profile_id, habit_id)
         impact, _, _ = self._delete_impact(session, habit)
         return impact
 
     def delete_habit(self, habit_id: int) -> HabitDeleteImpact:
-        """
-        Permanently delete a habit and its dependent completion and XP records.
-
-        Args:
-            habit_id: The ID of the habit to delete.
-
-        Returns:
-            The name, completion count, and XP amount that were removed.
-
-        Raises:
-            HabitNotFound: If the habit is not found or doesn't belong to the active profile.
-        """
+        """Permanently delete a Habit and its history in one transaction."""
         session = self._get_session()
-        profile = self._get_active_profile(session)
-        profile_id = require_persisted_id(profile.id, 'Active profile')
+        profile = self._get_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Profile')
         habit = self._owned_habit(session, profile_id, habit_id)
         impact, completions, xp_events = self._delete_impact(session, habit)
 
@@ -439,24 +370,10 @@ class HabitService:
     def complete_habit(
         self, habit_id: int, when: datetime | None = None
     ) -> tuple[Completion, list[XPEvent]]:
-        """
-        Mark a habit as completed for the current period.
-
-        Args:
-            habit_id: The ID of the habit to complete.
-            when: The datetime to use for completion (defaults to now).
-
-        Returns:
-            Tuple of (created Completion, list of newly awarded milestone XPEvents).
-
-        Raises:
-            HabitNotFound: If the habit is not found or doesn't belong to the active profile.
-            HabitArchived: If the habit is archived.
-            HabitAlreadyCompletedForPeriod: If the habit is already completed for this period.
-        """
+        """Record one Completion per Period and award any newly reached Milestones."""
         session = self._get_session()
-        profile = self._get_active_profile(session)
-        profile_id = require_persisted_id(profile.id, 'Active profile')
+        profile = self._get_profile(session)
+        profile_id = require_persisted_id(profile.id, 'Profile')
 
         habit = session.get(Habit, habit_id)
         if not habit or habit.profile_id != profile_id:
@@ -513,19 +430,9 @@ class HabitService:
         return (completion, milestone_events)
 
     def get_due_habits(self, when: datetime | None = None) -> list[Habit]:
-        """
-        Get active habits that are due (not completed for the current period).
-
-        Args:
-            when: The datetime to use for period calculation (defaults to now).
-
-        Returns:
-            A list of Habit instances that are due.
-
-        Raises:
-        """
+        """Return Active Habits without a Completion in the local current Period."""
         session = self._get_session()
-        profile = self._get_active_profile(session)
+        profile = self._get_profile(session)
 
         if when is None:
             when = datetime.now()
@@ -556,20 +463,9 @@ class HabitService:
         return due_habits
 
     def list_completions(self, habit_ids: list[int] | None = None) -> list[Completion]:
-        """
-        List completions for the active profile, optionally filtered by habit IDs.
-
-        Args:
-            habit_ids: Optional list of habit IDs to filter by. If None, returns all
-                      completions for the active profile.
-
-        Returns:
-            A list of Completion instances for the active profile.
-
-        Raises:
-        """
+        """List the profile's Completions, optionally for selected Habits."""
         session = self._get_session()
-        profile = self._get_active_profile(session)
+        profile = self._get_profile(session)
 
         # Join Completion → Habit and filter by profile_id
         statement = (

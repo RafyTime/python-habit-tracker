@@ -1,4 +1,4 @@
-"""Database seeding service for evaluation fixture data."""
+"""Create the deterministic four-week Test fixture."""
 
 from collections.abc import Callable, Iterator
 from datetime import datetime, timedelta
@@ -15,31 +15,17 @@ from src.core.xp.service import XPService
 def seed_db(
     session_factory: Callable[[], Iterator[Session]],
     reference_time: datetime | None = None,
-    progress_callback: Callable[[str], None] | None = None,
 ) -> None:
-    """
-    Seed the single profile with five predefined habits and four-week histories.
-
-    Args:
-        session_factory: Callable returning a session iterator, matching get_session().
-        reference_time: Instant the four-week history is anchored to. Defaults to now.
-        progress_callback: Optional status updater for CLI progress output.
-    """
+    """Add five Habits and their histories relative to a reference time."""
     reference_time = reference_time or datetime.now()
     created_at = reference_time - timedelta(days=28)
-
-    def _emit(message: str) -> None:
-        if progress_callback:
-            progress_callback(message)
 
     profile_service = ProfileService(session_factory)
     xp_service = XPService(session_factory)
     habit_service = HabitService(session_factory, xp_service=xp_service)
 
-    _emit('Preparing the tracker...')
     profile_service.ensure_single_profile()
 
-    _emit('Loading Morning Hydration (28-day streak)...')
     hydration_id = _ensure_habit(
         habit_service,
         session_factory,
@@ -51,7 +37,6 @@ def seed_db(
     # Inclusive daily window: reference day and the previous 27 days.
     _complete_daily_offsets(habit_service, hydration_id, reference_time, 27, 0)
 
-    _emit('Loading Gym Session (weekly consistency)...')
     gym_id = _ensure_habit(
         habit_service,
         session_factory,
@@ -62,7 +47,6 @@ def seed_db(
     )
     _complete_weekly_mondays(habit_service, gym_id, reference_time)
 
-    _emit('Loading Read 10 Pages (broken streak)...')
     read_id = _ensure_habit(
         habit_service,
         session_factory,
@@ -75,7 +59,6 @@ def seed_db(
     _complete_daily_offsets(habit_service, read_id, reference_time, 27, 18)
     _complete_daily_offsets(habit_service, read_id, reference_time, 15, 0)
 
-    _emit('Loading Code Practice (milestones 7/14)...')
     code_id = _ensure_habit(
         habit_service,
         session_factory,
@@ -88,7 +71,6 @@ def seed_db(
     _complete_daily_offsets(habit_service, code_id, reference_time, 27, 21)
     _complete_daily_offsets(habit_service, code_id, reference_time, 13, 0)
 
-    _emit('Loading Clean Apartment (weekly edge case)...')
     clean_id = _ensure_habit(
         habit_service,
         session_factory,
@@ -98,8 +80,6 @@ def seed_db(
         '🧹',
     )
     _complete_weekly_calendar_edges(habit_service, clean_id, reference_time)
-
-    _emit('Finishing sample data...')
 
 
 def _ensure_habit(

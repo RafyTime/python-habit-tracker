@@ -7,15 +7,6 @@ class HabitError(Exception):
     pass
 
 
-class ActiveProfileRequired(HabitError):
-    """Raised when an operation requires an active profile but none is set."""
-
-    def __init__(self) -> None:
-        super().__init__(
-            'No usable profile is available. Restart the app to initialize one.'
-        )
-
-
 class HabitNotFound(HabitError):
     """Raised when a habit cannot be found."""
 
@@ -32,11 +23,11 @@ class HabitNotFound(HabitError):
 
 
 class HabitAlreadyExists(HabitError):
-    """Raised when attempting to create a habit with a name that already exists for the active profile."""
+    """Raised when a Habit name already exists."""
 
     def __init__(self, name: str) -> None:
         self.name = name
-        super().__init__(f"Habit '{name}' already exists for this profile")
+        super().__init__(f"Habit '{name}' already exists")
 
 
 class HabitArchivedNameExists(HabitError):

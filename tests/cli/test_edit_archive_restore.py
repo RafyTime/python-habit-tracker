@@ -27,7 +27,7 @@ def _add_daily(name: str, *, icon: str | None = None) -> None:
 
 
 def test_edit_renames_a_habit_by_id_and_keeps_periodicity(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages', icon='📚')
     habit = session.exec(select(Habit).where(Habit.name == 'Read 10 Pages')).one()
@@ -44,7 +44,7 @@ def test_edit_renames_a_habit_by_id_and_keeps_periodicity(
 
 
 def test_edit_renames_a_habit_by_normalized_name(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
 
@@ -55,7 +55,7 @@ def test_edit_renames_a_habit_by_normalized_name(
     assert habit.name == 'Read 20 Pages'
 
 
-def test_edit_replaces_an_icon(session: Session, active_profile: Profile) -> None:
+def test_edit_replaces_an_icon(session: Session, single_profile: Profile) -> None:
     _add_daily('Read 10 Pages', icon='📚')
 
     mock_select = patch('src.cli.habit.questionary.select')
@@ -81,7 +81,7 @@ def test_edit_replaces_an_icon(session: Session, active_profile: Profile) -> Non
 
 
 def test_edit_clears_an_icon_explicitly(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages', icon='📚')
 
@@ -94,7 +94,7 @@ def test_edit_clears_an_icon_explicitly(
 
 
 def test_edit_rejects_replacement_and_clear_icon_together(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages', icon='📚')
 
@@ -109,7 +109,7 @@ def test_edit_rejects_replacement_and_clear_icon_together(
 
 
 def test_edit_does_not_accept_an_inline_icon_value(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages', icon='📚')
 
@@ -121,7 +121,7 @@ def test_edit_does_not_accept_an_inline_icon_value(
 
 
 def test_edit_help_does_not_offer_repetition_changes(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     result = _invoke(['edit', '--help'])
 
@@ -131,7 +131,7 @@ def test_edit_help_does_not_offer_repetition_changes(
 
 
 def test_edit_excludes_archived_habits_unless_explicitly_included(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     habit = session.exec(select(Habit)).one()
@@ -157,7 +157,7 @@ def test_edit_excludes_archived_habits_unless_explicitly_included(
 
 
 def test_edit_blocks_a_normalized_name_collision(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     _add_daily('Gym Session')
@@ -172,7 +172,7 @@ def test_edit_blocks_a_normalized_name_collision(
 
 
 def test_edit_blocks_collision_with_an_archived_name(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     _add_daily('Gym Session')
@@ -193,7 +193,7 @@ def test_edit_blocks_collision_with_an_archived_name(
 
 
 def test_non_interactive_edit_without_selector_fails_with_an_example(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
 
@@ -206,7 +206,7 @@ def test_non_interactive_edit_without_selector_fails_with_an_example(
 
 
 def test_interactive_edit_opens_an_active_habit_picker(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     _add_daily('Gym Session')
@@ -233,7 +233,7 @@ def test_interactive_edit_opens_an_active_habit_picker(
 
 
 def test_interactive_edit_opens_an_action_menu_instead_of_renaming(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     habit = session.exec(select(Habit)).one()
@@ -261,7 +261,7 @@ def test_interactive_edit_opens_an_action_menu_instead_of_renaming(
 
 
 def test_interactive_edit_can_change_the_name_from_the_action_menu(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages', icon='📚')
     habit = session.exec(select(Habit)).one()
@@ -282,7 +282,7 @@ def test_interactive_edit_can_change_the_name_from_the_action_menu(
 
 
 def test_interactive_edit_can_change_the_icon_from_the_action_menu(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages', icon='📚')
     habit = session.exec(select(Habit)).one()
@@ -302,7 +302,7 @@ def test_interactive_edit_can_change_the_icon_from_the_action_menu(
 
 
 def test_interactive_edit_can_clear_the_icon_from_the_action_menu(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages', icon='📚')
     habit = session.exec(select(Habit)).one()
@@ -322,7 +322,7 @@ def test_interactive_edit_can_clear_the_icon_from_the_action_menu(
 
 
 def test_edit_icon_picker_can_keep_the_current_icon(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages', icon='📚')
 
@@ -343,7 +343,7 @@ def test_edit_icon_picker_can_keep_the_current_icon(
 
 
 def test_edit_icon_picker_can_clear_the_icon(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages', icon='📚')
 
@@ -362,7 +362,7 @@ def test_edit_icon_picker_can_clear_the_icon(
 
 
 def test_edit_icon_picker_can_enter_a_custom_symbol(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages', icon='📚')
 
@@ -382,7 +382,7 @@ def test_edit_icon_picker_can_enter_a_custom_symbol(
 
 
 def test_edit_icon_picker_cancel_does_not_change_the_habit(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages', icon='📚')
 
@@ -401,7 +401,7 @@ def test_edit_icon_picker_cancel_does_not_change_the_habit(
 
 
 def test_edit_icon_flag_without_a_terminal_fails_and_keeps_the_habit(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages', icon='📚')
 
@@ -417,7 +417,7 @@ def test_edit_icon_flag_without_a_terminal_fails_and_keeps_the_habit(
 
 
 def test_interactive_edit_cancel_does_not_change_the_habit(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
 
@@ -435,7 +435,7 @@ def test_interactive_edit_cancel_does_not_change_the_habit(
 
 
 def test_archive_by_name_hides_the_habit_and_keeps_history(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     assert _invoke(['done', 'Read 10 Pages']).exit_code == 0
@@ -462,7 +462,7 @@ def test_archive_by_name_hides_the_habit_and_keeps_history(
 
 
 def test_archive_by_id_removes_the_habit_from_today_and_due_selection(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     _add_daily('Gym Session')
@@ -496,7 +496,7 @@ def test_archive_by_id_removes_the_habit_from_today_and_due_selection(
 
 
 def test_archive_without_force_asks_for_confirmation(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
 
@@ -514,7 +514,7 @@ def test_archive_without_force_asks_for_confirmation(
 
 
 def test_interactive_archive_cancel_leaves_the_habit_active(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
 
@@ -532,7 +532,7 @@ def test_interactive_archive_cancel_leaves_the_habit_active(
 
 
 def test_restore_returns_the_same_habit_history_and_xp(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages', icon='📚')
     assert _invoke(['done', 'Read 10 Pages']).exit_code == 0
@@ -562,7 +562,7 @@ def test_restore_returns_the_same_habit_history_and_xp(
 
 
 def test_restore_by_id_puts_the_habit_back_on_today(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     habit = session.exec(select(Habit)).one()
@@ -577,7 +577,7 @@ def test_restore_by_id_puts_the_habit_back_on_today(
 
 
 def test_restore_blocks_a_normalized_name_collision(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     _add_daily('Gym Session')
@@ -600,7 +600,7 @@ def test_restore_blocks_a_normalized_name_collision(
 
 
 def test_restore_help_and_missing_selector_use_shared_conventions(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     missing = _invoke(['restore'])
     assert missing.exit_code == 1
@@ -614,7 +614,7 @@ def test_restore_help_and_missing_selector_use_shared_conventions(
 
 
 def test_interactive_restore_selects_an_archived_habit(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     _add_daily('Gym Session')
@@ -638,7 +638,7 @@ def test_interactive_restore_selects_an_archived_habit(
 
 
 def test_interactive_restore_cancel_leaves_the_habit_archived(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     assert _invoke(['archive', 'Read 10 Pages', '--force']).exit_code == 0
@@ -657,7 +657,7 @@ def test_interactive_restore_cancel_leaves_the_habit_archived(
 
 
 def test_add_directs_an_archived_name_to_restore(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     _add_daily('Read 10 Pages')
     assert _invoke(['archive', 'Read 10 Pages', '--force']).exit_code == 0

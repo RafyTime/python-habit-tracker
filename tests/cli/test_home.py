@@ -41,13 +41,13 @@ def test_non_interactive_bare_habit_prints_today_snapshot(
 
 
 def test_interactive_bare_habit_shows_snapshot_and_basic_menu(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
-    active_profile.username = 'Alex'
-    session.add(active_profile)
+    single_profile.display_name = 'Alex'
+    session.add(single_profile)
     session.add(
         Habit(
-            profile_id=active_profile.id,
+            profile_id=single_profile.id,
             name='Read 10 Pages',
             periodicity=Periodicity.DAILY,
         )
@@ -80,10 +80,10 @@ def test_interactive_bare_habit_shows_snapshot_and_basic_menu(
 
 
 def test_existing_profile_gets_home_default_without_losing_history(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     habit = Habit(
-        profile_id=active_profile.id,
+        profile_id=single_profile.id,
         name='Read 10 Pages',
         periodicity=Periodicity.DAILY,
     )
@@ -98,7 +98,7 @@ def test_existing_profile_gets_home_default_without_losing_history(
     session.commit()
     session.add(
         XPEvent(
-            profile_id=active_profile.id,
+            profile_id=single_profile.id,
             amount=1,
             reason='HABIT_COMPLETION',
             habit_id=habit.id,
@@ -111,25 +111,25 @@ def test_existing_profile_gets_home_default_without_losing_history(
 
     assert result.exit_code == 0
     assert 'Return home' in result.stdout
-    session.refresh(active_profile)
-    assert active_profile.after_action == AfterAction.HOME
+    session.refresh(single_profile)
+    assert single_profile.after_action == AfterAction.HOME
     assert session.exec(select(Habit)).one().name == 'Read 10 Pages'
     assert session.exec(select(Completion)).one().habit_id == habit.id
     assert session.exec(select(XPEvent)).one().amount == 1
 
 
 def test_home_preference_returns_to_refreshed_snapshot_after_an_action(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     session.add_all(
         [
             Habit(
-                profile_id=active_profile.id,
+                profile_id=single_profile.id,
                 name='Read 10 Pages',
                 periodicity=Periodicity.DAILY,
             ),
             Habit(
-                profile_id=active_profile.id,
+                profile_id=single_profile.id,
                 name='Gym Session',
                 periodicity=Periodicity.WEEKLY,
             ),
@@ -167,7 +167,7 @@ def test_home_preference_returns_to_refreshed_snapshot_after_an_action(
 
 
 def test_exit_preference_performs_one_action_then_ends(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     assert _invoke(['settings', '--after-action', 'exit']).exit_code == 0
@@ -188,7 +188,7 @@ def test_exit_preference_performs_one_action_then_ends(
 
 
 def test_esc_after_an_action_leaves_interactive_home(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
 
@@ -207,7 +207,7 @@ def test_esc_after_an_action_leaves_interactive_home(
 
 
 def test_cancelling_a_picker_returns_home_without_changing_data(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
 
@@ -255,7 +255,7 @@ def test_interactive_empty_home_shows_empty_state_and_menu(
 
 
 def test_home_add_uses_the_same_persisted_behavior(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.habit.questionary.select')
     with (
@@ -276,7 +276,7 @@ def test_home_add_uses_the_same_persisted_behavior(
 
 
 def test_home_settings_shows_current_values_before_offering_changes(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.settings.questionary.select')
     with (
@@ -295,9 +295,9 @@ def test_home_settings_shows_current_values_before_offering_changes(
     assert 'After an action' in result.stdout
     assert 'Return home' in result.stdout
     mock_ask.assert_not_called()
-    session.refresh(active_profile)
-    assert active_profile.username == 'testuser'
-    assert active_profile.after_action == AfterAction.HOME
+    session.refresh(single_profile)
+    assert single_profile.display_name == 'testuser'
+    assert single_profile.after_action == AfterAction.HOME
     assert mock_select_obj.call_args.args[0] == 'What would you like to change?'
     assert 'style' in mock_select_obj.call_args.kwargs
     titles = [choice.title for choice in mock_select_obj.call_args.kwargs['choices']]
@@ -309,7 +309,7 @@ def test_home_settings_shows_current_values_before_offering_changes(
 
 
 def test_home_settings_can_change_the_display_name(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.settings.questionary.select')
     with (
@@ -322,15 +322,15 @@ def test_home_settings_can_change_the_display_name(
         result = _invoke_home()
 
     assert result.exit_code == 0
-    session.refresh(active_profile)
-    assert active_profile.username == 'Alex'
-    assert active_profile.after_action == AfterAction.HOME
+    session.refresh(single_profile)
+    assert single_profile.display_name == 'Alex'
+    assert single_profile.after_action == AfterAction.HOME
     assert 'Alex' in result.stdout
     assert 'Display name' in result.stdout
 
 
 def test_home_settings_can_change_after_action_behavior(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.settings.questionary.select')
     with (
@@ -347,9 +347,9 @@ def test_home_settings_can_change_after_action_behavior(
 
     assert result.exit_code == 0
     mock_ask.assert_not_called()
-    session.refresh(active_profile)
-    assert active_profile.username == 'testuser'
-    assert active_profile.after_action == AfterAction.EXIT
+    session.refresh(single_profile)
+    assert single_profile.display_name == 'testuser'
+    assert single_profile.after_action == AfterAction.EXIT
     assert 'Exit immediately' in result.stdout
     after_titles = [
         choice.title for choice in mock_select_obj.call_args_list[1].kwargs['choices']
@@ -358,7 +358,7 @@ def test_home_settings_can_change_after_action_behavior(
 
 
 def test_cancelling_settings_editor_leaves_values_unchanged(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     mock_select = patch('src.cli.settings.questionary.select')
     with (
@@ -371,13 +371,13 @@ def test_cancelling_settings_editor_leaves_values_unchanged(
         result = _invoke_home()
 
     assert result.exit_code == 0
-    session.refresh(active_profile)
-    assert active_profile.username == 'testuser'
-    assert active_profile.after_action == AfterAction.HOME
+    session.refresh(single_profile)
+    assert single_profile.display_name == 'testuser'
+    assert single_profile.after_action == AfterAction.HOME
 
 
 def test_home_view_stats_uses_the_same_presentation(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
 
@@ -399,7 +399,7 @@ def test_home_view_stats_uses_the_same_presentation(
 
 
 def test_failed_home_action_prompts_before_returning(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     assert _invoke(['done', 'Read 10 Pages']).exit_code == 0
@@ -418,15 +418,15 @@ def test_failed_home_action_prompts_before_returning(
 
 
 def test_bare_habit_keeps_the_due_only_snapshot(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     due = Habit(
-        profile_id=active_profile.id,
+        profile_id=single_profile.id,
         name='Due Habit',
         periodicity=Periodicity.DAILY,
     )
     done = Habit(
-        profile_id=active_profile.id,
+        profile_id=single_profile.id,
         name='Done Habit',
         periodicity=Periodicity.DAILY,
     )
@@ -451,7 +451,7 @@ def test_bare_habit_keeps_the_due_only_snapshot(
 
 
 def test_exit_preference_ends_after_a_failed_action(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     assert _invoke(['done', 'Read 10 Pages']).exit_code == 0

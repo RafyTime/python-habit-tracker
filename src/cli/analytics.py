@@ -6,13 +6,13 @@ from typer import Argument, Exit, Option
 
 from src.cli import render
 from src.core.analytics import (
-    CompletionDTO,
     HabitDTO,
     filter_habits_by_archived_inclusion,
     filter_habits_by_periodicity,
     longest_streak_across_habits,
     longest_streak_for_habit,
 )
+from src.core.analytics.adapters import completion_to_dto, habit_to_dto
 from src.core.db import get_session
 from src.core.habit import HabitNotFound, HabitService
 from src.core.models import Completion, Habit, Periodicity, require_persisted_id
@@ -21,29 +21,9 @@ from src.core.xp import XPService
 _STATS_ICON = '📊'
 
 
-def _habit_to_dto(habit: Habit) -> HabitDTO:
-    """Convert Habit ORM model to HabitDTO."""
-    return HabitDTO(
-        id=require_persisted_id(habit.id, 'Habit'),
-        name=habit.name,
-        periodicity=habit.periodicity,
-        created_at=habit.created_at,
-        is_active=habit.is_active,
-    )
-
-
-def _completion_to_dto(completion: Completion) -> CompletionDTO:
-    """Convert Completion ORM model to CompletionDTO."""
-    return CompletionDTO(
-        habit_id=completion.habit_id,
-        completed_at=completion.completed_at,
-        period_key=completion.period_key,
-    )
-
-
 def _all_habit_dtos(service: HabitService) -> list[HabitDTO]:
     """Load all persisted habits as analytics DTOs."""
-    return [_habit_to_dto(habit) for habit in service.list_habits(active_only=False)]
+    return [habit_to_dto(habit) for habit in service.list_habits(active_only=False)]
 
 
 def _habits_for_analytics(
@@ -78,7 +58,7 @@ def _overall_streak_detail(
 ) -> str:
     result = longest_streak_across_habits(
         habits,
-        [_completion_to_dto(item) for item in completions],
+        [completion_to_dto(item) for item in completions],
     )
     if result.length == 0 or result.habit_name is None or result.periodicity is None:
         return '0'
@@ -88,8 +68,8 @@ def _overall_streak_detail(
 def _habit_streak_detail(habit: Habit, completions: list[Completion]) -> str:
     return _streak_phrase(
         longest_streak_for_habit(
-            _habit_to_dto(habit),
-            [_completion_to_dto(item) for item in completions],
+            habit_to_dto(habit),
+            [completion_to_dto(item) for item in completions],
         ),
         habit.periodicity,
     )
@@ -100,10 +80,6 @@ def _latest_completion_label(completions: list[Completion]) -> str:
         return 'Never completed'
     latest = max(completions, key=lambda item: item.completed_at)
     return latest.completed_at.strftime('%Y-%m-%d')
-
-
-def _repetition_label(periodicity: Periodicity) -> str:
-    return 'Daily' if periodicity == Periodicity.DAILY else 'Weekly'
 
 
 def _label_archived_history(include_archived: bool) -> None:
@@ -138,7 +114,7 @@ def stats(
         completions = service.list_completions(habit_ids=[habit_id])
         xp_earned = XPService(get_session).get_total_xp_for_habit(habit_id)
         rows = [
-            ('Repetition', _repetition_label(habit.periodicity)),
+            ('Repetition', render.repetition_label(habit.periodicity)),
             ('Status', 'Active' if habit.is_active else 'Archived'),
             ('Completions', _count_label(len(completions), 'completion')),
             ('Longest streak', _habit_streak_detail(habit, completions)),

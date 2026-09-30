@@ -27,10 +27,8 @@ def show_xp(
 ) -> None:
     """Show XP, level, and progress to the next level."""
     service = XPService(get_session)
-    total_xp = service.get_total_xp_for_active_profile()
-    level, xp_into_level, xp_to_next_level = (
-        service.get_level_progress_for_active_profile()
-    )
+    total_xp = service.get_total_xp_for_profile()
+    level, xp_into_level, xp_to_next_level = service.get_level_progress_for_profile()
     xp_for_level = xp_into_level + xp_to_next_level
     with render.view():
         render.heading('XP', symbol=_XP_ICON)
@@ -48,7 +46,7 @@ def show_xp(
             total=xp_for_level,
         )
         if history:
-            events = service.list_recent_events_for_active_profile(limit)
+            events = service.list_recent_events_for_profile(limit)
             render.blank()
             render.heading('History', symbol=_HISTORY_ICON)
             if events:

@@ -100,7 +100,7 @@ def test_personal_quick_start_sets_name_creates_habit_and_records_one_completion
     assert any(title == 'No Icon' for title in icon_titles)
 
     profile = session.exec(select(Profile)).one()
-    assert profile.username == 'Alex'
+    assert profile.display_name == 'Alex'
     habit = session.exec(select(Habit)).one()
     assert habit.name == 'Read 10 Pages'
     assert habit.periodicity == Periodicity.DAILY
@@ -177,7 +177,7 @@ def test_sample_quick_start_loads_five_predefined_habits_with_histories(
         assert icon in listed.stdout
 
     profile = session.exec(select(Profile)).one()
-    assert profile.username == 'Alex'
+    assert profile.display_name == 'Alex'
     habits = {habit.name: habit for habit in session.exec(select(Habit)).all()}
     assert set(habits) == set(SAMPLE_HABITS)
     for name, (periodicity, icon) in SAMPLE_HABITS.items():
@@ -230,7 +230,7 @@ def test_existing_habits_skip_sample_data_and_keep_history(session: Session) -> 
     habits = list(session.exec(select(Habit)))
     assert [habit.name for habit in habits] == ['Morning Walk']
     assert session.exec(select(Completion)).one().habit_id == habits[0].id
-    assert session.exec(select(Profile)).one().username == 'Alex'
+    assert session.exec(select(Profile)).one().display_name == 'Alex'
 
 
 def test_archived_habits_also_skip_sample_data(session: Session) -> None:
@@ -288,7 +288,7 @@ def test_repeating_start_retains_the_display_name_without_resetting_habits(
 
     assert second.exit_code == 0, second.output
     choose.assert_not_called()
-    assert session.exec(select(Profile)).one().username == 'Alex'
+    assert session.exec(select(Profile)).one().display_name == 'Alex'
     assert {habit.id for habit in session.exec(select(Habit)).all()} == first_ids
     assert len(list(session.exec(select(Completion)))) == first_completions
 
@@ -305,7 +305,7 @@ def test_cancelling_the_beginning_choice_keeps_the_display_name(
 
     assert result.exit_code == 0
     assert 'Traceback' not in result.output
-    assert session.exec(select(Profile)).one().username == 'Alex'
+    assert session.exec(select(Profile)).one().display_name == 'Alex'
     assert session.exec(select(Habit)).first() is None
     assert 'What would you like to do?' not in result.stdout
 
@@ -327,7 +327,7 @@ def test_cancelling_habit_creation_keeps_the_name_and_creates_nothing(
 
     assert result.exit_code == 0
     assert 'Traceback' not in result.output
-    assert session.exec(select(Profile)).one().username == 'Alex'
+    assert session.exec(select(Profile)).one().display_name == 'Alex'
     assert session.exec(select(Habit)).first() is None
 
 

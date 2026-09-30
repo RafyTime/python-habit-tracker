@@ -30,12 +30,12 @@ def test_xp_on_empty_data_shows_zero_progress_and_a_next_step(
 
 
 def test_xp_shows_total_level_and_progress(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     session.add_all(
         [
-            XPEvent(profile_id=active_profile.id, amount=1, reason='HABIT_COMPLETION'),
-            XPEvent(profile_id=active_profile.id, amount=1, reason='HABIT_COMPLETION'),
+            XPEvent(profile_id=single_profile.id, amount=1, reason='HABIT_COMPLETION'),
+            XPEvent(profile_id=single_profile.id, amount=1, reason='HABIT_COMPLETION'),
         ]
     )
     session.commit()
@@ -52,11 +52,11 @@ def test_xp_shows_total_level_and_progress(
 
 
 def test_xp_shows_level_two_after_ten_xp(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     session.add_all(
         [
-            XPEvent(profile_id=active_profile.id, amount=1, reason='HABIT_COMPLETION')
+            XPEvent(profile_id=single_profile.id, amount=1, reason='HABIT_COMPLETION')
             for _ in range(10)
         ]
     )
@@ -72,7 +72,7 @@ def test_xp_shows_level_two_after_ten_xp(
 
 
 def test_xp_history_shows_recent_events(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     assert _invoke(['add', 'Read 10 Pages', '--every', 'daily']).exit_code == 0
     assert _invoke(['done', 'Read 10 Pages']).exit_code == 0
@@ -88,10 +88,10 @@ def test_xp_history_shows_recent_events(
 
 
 def test_xp_history_respects_the_requested_limit(
-    session: Session, active_profile: Profile
+    session: Session, single_profile: Profile
 ) -> None:
     habit = Habit(
-        profile_id=active_profile.id,
+        profile_id=single_profile.id,
         name='Read 10 Pages',
         periodicity=Periodicity.DAILY,
     )
@@ -109,7 +109,7 @@ def test_xp_history_respects_the_requested_limit(
         session.commit()
         session.add(
             XPEvent(
-                profile_id=active_profile.id,
+                profile_id=single_profile.id,
                 amount=1,
                 reason='HABIT_COMPLETION',
                 habit_id=habit.id,

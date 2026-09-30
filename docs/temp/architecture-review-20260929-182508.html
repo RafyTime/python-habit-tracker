@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Architecture review for Habits.py</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({startOnLoad: true, theme: "neutral", securityLevel: "strict", flowchart: {curve: "basis"}});
+  </script>
+  <style>
+    :root { color-scheme: light; }
+    body { background:#f7f6f2; color:#172033; }
+    .serif { font-family: Georgia, Cambria, serif; }
+    .diagram { min-height: 318px; background:#fcfcfa; border:1px solid #d9dedb; border-radius:16px; padding:18px; overflow:auto; }
+    .tag { letter-spacing:.13em; text-transform:uppercase; font-size:10px; font-weight:700; }
+    .module { border:1.5px solid #9ba9ae; border-radius:9px; padding:10px 12px; background:#fff; color:#24344a; font-size:12px; line-height:1.3; }
+    .deep { border:2px solid #164e63; border-radius:12px; background:#15384a; color:#f1f7f6; padding:16px; }
+    .internal { border:1px solid #6b8b97; border-radius:7px; background:#ffffff13; padding:8px; font-size:11px; }
+    .seam { border-top:2px dashed #6994a0; }
+    .arrow { color:#718e96; font-size:20px; line-height:1; text-align:center; }
+    .leak { color:#b3413b; }
+    .step { border-left:3px solid #b3413b; background:#fff; padding:9px 11px; border-radius:0 8px 8px 0; }
+    .step-good { border-left:3px solid #2c8067; background:#fff; padding:9px 11px; border-radius:0 8px 8px 0; }
+    .smallcap { text-transform:uppercase; letter-spacing:.12em; font-size:10px; font-weight:700; color:#607481; }
+    .file { color:#315c6a; }
+    .mass { border:1px solid #b6c4c6; border-radius:7px; background:#fff; }
+    .mass-head { background:#f2d8d3; color:#7e332d; border-bottom:1px solid #cfaaa5; padding:9px; font-size:11px; }
+    .mass-body { padding:10px; color:#536471; font-size:11px; }
+    .mass-good .mass-head { background:#d6e9e2; color:#1f5d4d; border-bottom-color:#a0c8b9; }
+    @media (max-width: 768px) { .diagram { min-height: 280px; } }
+  </style>
+</head>
+<body class="antialiased">
+<main class="max-w-6xl mx-auto px-5 md:px-10 py-12 md:py-16">
+  <header class="border-b border-slate-300 pb-8 mb-10">
+    <div class="flex flex-wrap justify-between gap-3 text-xs uppercase tracking-[.18em] text-slate-500">
+      <span>Habits.py / architecture review</span><span>29 September 2026</span>
+    </div>
+    <h1 class="serif text-4xl md:text-6xl tracking-tight mt-5">Where to deepen the modules</h1>
+    <div class="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-600">
+      <span><span class="inline-block w-3 h-3 border border-slate-500 bg-white mr-2 align-middle"></span>module</span>
+      <span><span class="inline-block w-5 border-t-2 border-dashed border-cyan-700 mr-2 align-middle"></span>seam</span>
+      <span><span class="leak mr-2">●</span>leakage</span>
+      <span><span class="inline-block w-3 h-3 bg-[#15384a] mr-2 align-middle"></span>deep module</span>
+    </div>
+  </header>
+
+  <section id="candidates" class="space-y-8">
+    <article id="completion" class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div class="p-7 md:p-9">
+        <div class="flex flex-wrap items-center gap-3 mb-4"><span class="tag px-3 py-1 rounded-full bg-emerald-100 text-emerald-800">Strong</span><span class="tag text-slate-500">in-process</span><span class="tag text-slate-400">01</span></div>
+        <h2 class="serif text-3xl md:text-4xl">Give Completion and XP one commit owner</h2>
+        <p class="font-mono text-xs md:text-sm file mt-3">src/core/habit/service.py:370–430 · src/core/xp/service.py:32–96 · src/cli/habit.py:351–413</p>
+        <div class="grid md:grid-cols-2 gap-5 mt-8">
+          <div><h3 class="smallcap mb-3">Before / commit ownership leaks</h3><div class="diagram">
+            <pre class="mermaid">flowchart TB
+              A[CLI: Done] --> B[Habit module: Completion]
+              B --> C[commit 1]
+              C --> D[XP module: completion award]
+              D --> E[commit 2]
+              E --> F[Habit module: streak read]
+              F --> G[XP module: Milestone award]
+              G --> H[commit 3, possibly more]
+              classDef risk fill:#fff3f1,stroke:#b3413b,color:#762c29;
+              class C,E,H risk;</pre>
+            <p class="text-xs text-[#a1413a] mt-2">A later failure can leave earlier records committed.</p>
+          </div></div>
+          <div><h3 class="smallcap mb-3">After / one domain operation</h3><div class="diagram flex flex-col justify-center">
+            <div class="text-center text-xs text-slate-500 mb-3">Done caller</div><div class="arrow">↓</div>
+            <div class="seam my-3"></div>
+            <div class="deep">
+              <div class="tag text-cyan-100">Completion module</div>
+              <div class="text-sm mt-1 mb-4">One transaction owns Completion, XP, and Milestone.</div>
+              <div class="grid grid-cols-3 gap-2"><div class="internal">period rule</div><div class="internal">streak rule</div><div class="internal">award rule</div></div>
+              <div class="text-xs text-emerald-200 mt-4">commit once · rollback together</div>
+            </div>
+          </div></div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-6 mt-7 text-sm leading-relaxed">
+          <p><span class="smallcap block mb-1">Problem</span>The Completion module commits before the XP module finishes. Its interface also makes callers choose whether XP exists by injecting an optional collaborator.</p>
+          <p><span class="smallcap block mb-1">Solution</span>Put commit ownership behind the Completion seam. Keep the XP award rule inside that operation, with the read-only XP behavior available to its callers.</p>
+        </div>
+        <div class="mt-6 flex flex-wrap gap-2 text-xs"><span class="bg-slate-100 px-3 py-2 rounded-full">locality: one place owns rollback</span><span class="bg-slate-100 px-3 py-2 rounded-full">leverage: one completion covers awards</span><span class="bg-slate-100 px-3 py-2 rounded-full">tests exercise the interface on failure</span></div>
+        <p class="mt-5 text-xs text-slate-500">Deletion test: removing this deeper module would spread period checks, award order, and transaction rules across callers. The XP rule can remain an internal module; no new adapter is needed.</p>
+      </div>
+    </article>
+
+    <article id="snapshot" class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div class="p-7 md:p-9">
+        <div class="flex flex-wrap items-center gap-3 mb-4"><span class="tag px-3 py-1 rounded-full bg-amber-100 text-amber-800">Worth exploring</span><span class="tag text-slate-500">in-process</span><span class="tag text-slate-400">02</span></div>
+        <h2 class="serif text-3xl md:text-4xl">Separate the Today snapshot from cursor redraws</h2>
+        <p class="font-mono text-xs md:text-sm file mt-3">src/cli/home.py:60–80, 94–190, 193–201 · tests/cli/test_home_pool.py:29–42</p>
+        <div class="grid md:grid-cols-2 gap-5 mt-8">
+          <div><h3 class="smallcap mb-3">Before / each cursor movement</h3><div class="diagram flex flex-col justify-center gap-2">
+            <div class="module text-center">arrow key</div><div class="arrow">↓</div><div class="step"><span class="smallcap">1</span> Open session and read Profile, Habits, Due, XP</div><div class="step"><span class="smallcap">2</span> Group Daily / Weekly, Due / Done</div><div class="step"><span class="smallcap">3</span> Draw Today and menu again</div><div class="text-xs leak text-center mt-2">↺ repeat for the next arrow key</div>
+          </div></div>
+          <div><h3 class="smallcap mb-3">After / data changes set the pace</h3><div class="diagram flex flex-col justify-center gap-3">
+            <div class="deep"><div class="tag text-cyan-100">Today snapshot module</div><div class="text-sm mt-2">Own one coherent read of Profile, Due Habits, Completion progress, and XP.</div><div class="internal mt-4">Daily and Weekly groups stay together</div></div>
+            <div class="seam my-1"></div><div class="step-good">Today and Home render the same snapshot</div><div class="step-good">Cursor keys redraw the menu from held data</div>
+          </div></div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-6 mt-7 text-sm leading-relaxed">
+          <p><span class="smallcap block mb-1">Problem</span>The Home module calls the read and render path for every arrow key. The snapshot seam mixes data acquisition with drawing.</p>
+          <p><span class="smallcap block mb-1">Solution</span>Deepen the Today snapshot module so one read supplies both Today and Home. Refresh it when a habit action changes data, while the render module handles cursor movement.</p>
+        </div>
+        <div class="mt-6 flex flex-wrap gap-2 text-xs"><span class="bg-slate-100 px-3 py-2 rounded-full">locality: grouping stays in one module</span><span class="bg-slate-100 px-3 py-2 rounded-full">leverage: Today and Home share the read</span><span class="bg-slate-100 px-3 py-2 rounded-full">tests cover data and redraw separately</span></div>
+        <p class="mt-5 text-xs text-slate-500">Deletion test: without this module, Profile, Due, XP, and grouping coordination would return to both Today and Home. A second adapter is not justified by the current implementation.</p>
+      </div>
+    </article>
+
+    <article id="progress" class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div class="p-7 md:p-9">
+        <div class="flex flex-wrap items-center gap-3 mb-4"><span class="tag px-3 py-1 rounded-full bg-slate-200 text-slate-700">Speculative</span><span class="tag text-slate-500">in-process</span><span class="tag text-slate-400">03</span></div>
+        <h2 class="serif text-3xl md:text-4xl">Concentrate Habit progress reads</h2>
+        <p class="font-mono text-xs md:text-sm file mt-3">src/cli/habit.py:312–345, 384–395 · src/cli/analytics.py:24–35, 56–75, 98–163 · src/core/analytics/adapters.py:7–24</p>
+        <div class="grid md:grid-cols-2 gap-5 mt-8">
+          <div><h3 class="smallcap mb-3">Before / repeated thin mapping</h3><div class="diagram flex flex-col justify-center">
+            <div class="grid grid-cols-3 gap-2 text-center"><div class="mass"><div class="mass-head">List interface</div><div class="mass-body h-28">Due read<br>Completion read<br>DTO mapping<br>streak call</div></div><div class="mass"><div class="mass-head">Done interface</div><div class="mass-body h-28">Completion read<br>DTO mapping<br>streak call<br>Due read</div></div><div class="mass"><div class="mass-head">Stats interface</div><div class="mass-body h-28">Habit filter<br>Completion read<br>DTO mapping<br>streak call</div></div></div>
+            <div class="seam my-5"></div><div class="module text-center">Analytics adapters: field copies</div><div class="module text-center mt-2">Pure Analytics: streak rules</div>
+          </div></div>
+          <div><h3 class="smallcap mb-3">After / deeper read, pure rules kept</h3><div class="diagram flex flex-col justify-center">
+            <div class="grid grid-cols-3 gap-2 text-center text-xs"><div class="module">List</div><div class="module">Done</div><div class="module">Stats</div></div><div class="arrow mt-2">↓</div><div class="seam my-3"></div>
+            <div class="deep mass-good"><div class="tag text-cyan-100">Habit progress read module</div><div class="text-sm mt-2">Own selection, archived inclusion, Completion loading, and conversion.</div><div class="internal mt-4">Keep pure Analytics as an internal calculation seam</div></div>
+          </div></div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-6 mt-7 text-sm leading-relaxed">
+          <p><span class="smallcap block mb-1">Problem</span>List, Done, and Stats each coordinate Habit and Completion reads with thin DTO adapters. That shallow mapping module has little depth on its own.</p>
+          <p><span class="smallcap block mb-1">Solution</span>Deepen the read module at the persistence and Analytics seam. Keep the pure Analytics rules independently testable, as the project spec requires.</p>
+        </div>
+        <div class="mt-6 flex flex-wrap gap-2 text-xs"><span class="bg-slate-100 px-3 py-2 rounded-full">locality: selection and mapping together</span><span class="bg-slate-100 px-3 py-2 rounded-full">leverage: three caller paths reuse reads</span><span class="bg-slate-100 px-3 py-2 rounded-full">tests use the read interface and pure rules</span></div>
+        <p class="mt-5 text-xs text-slate-500">Deletion test: deleting only the field-copy adapter moves simple mapping into callers; deleting a deeper read module would spread selection and conversion again. This needs a concrete change that justifies the extra seam.</p>
+        <p class="mt-2 text-xs text-slate-500">Spec constraint: docs/temp/cli-experience-spec.md:111–112 keeps pure Analytics functions as a second test seam.</p>
+      </div>
+    </article>
+  </section>
+
+  <section id="top-recommendation" class="mt-12 p-8 md:p-10 bg-[#15384a] text-white rounded-2xl">
+    <div class="tag text-emerald-200">Top recommendation</div>
+    <h2 class="serif text-3xl md:text-4xl mt-3"><a class="underline decoration-emerald-300 underline-offset-8" href="#completion">Give Completion and XP one commit owner</a></h2>
+    <p class="text-slate-200 mt-4 max-w-3xl">Several commits split one Completion and its XP history. A single commit owner has the clearest gain in locality, leverage, and failure testing.</p>
+  </section>
+</main>
+</body>
+</html>

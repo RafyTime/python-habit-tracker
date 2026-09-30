@@ -13,63 +13,28 @@ from src.core.models import Periodicity
 
 
 def list_all_habits(habits: Sequence[HabitDTO]) -> list[HabitDTO]:
-    """
-    List all habits (identity function for explicit API).
-
-    Args:
-        habits: Sequence of habit DTOs.
-
-    Returns:
-        List of all habit DTOs.
-    """
+    """Return a list of all supplied Habits for the assignment API."""
     return list(habits)
 
 
 def filter_habits_by_periodicity(
     habits: Sequence[HabitDTO], periodicity: Periodicity
 ) -> list[HabitDTO]:
-    """
-    Filter habits by periodicity type.
-
-    Args:
-        habits: Sequence of habit DTOs.
-        periodicity: Periodicity type to filter by.
-
-    Returns:
-        List of habit DTOs matching the periodicity.
-    """
+    """Return Habits with the requested Periodicity."""
     return [h for h in habits if h.periodicity == periodicity]
 
 
 def filter_habits_by_archived_inclusion(
     habits: Sequence[HabitDTO], *, include_archived: bool
 ) -> list[HabitDTO]:
-    """
-    Filter habits depending on whether archived history should be included.
-
-    Args:
-        habits: Sequence of habit DTOs.
-        include_archived: If True, return all habits. If False, return active habits only.
-
-    Returns:
-        List of habit DTOs matching the archived-inclusion choice.
-    """
+    """Include Archived Habits only when explicitly requested."""
     if include_archived:
         return list(habits)
     return [habit for habit in habits if habit.is_active]
 
 
 def _parse_period_key_to_ordinal(period_key: str, periodicity: Periodicity) -> int:
-    """
-    Parse a period key into an integer timeline index (ordinal).
-
-    Args:
-        period_key: Period key string (YYYY-MM-DD for DAILY, YYYY-Www for WEEKLY).
-        periodicity: Periodicity type.
-
-    Returns:
-        Integer ordinal representing the period.
-    """
+    """Map a Daily or Weekly Period key onto its calendar timeline."""
     if periodicity == Periodicity.DAILY:
         # Parse YYYY-MM-DD and convert to ordinal
         period_date = date.fromisoformat(period_key)
@@ -87,15 +52,7 @@ def _parse_period_key_to_ordinal(period_key: str, periodicity: Periodicity) -> i
 
 
 def _get_consecutive_step(periodicity: Periodicity) -> int:
-    """
-    Get the step size for consecutive periods.
-
-    Args:
-        periodicity: Periodicity type.
-
-    Returns:
-        Step size (1 for DAILY, 7 for WEEKLY).
-    """
+    """Return the number of calendar days between consecutive Periods."""
     if periodicity == Periodicity.DAILY:
         return 1
     elif periodicity == Periodicity.WEEKLY:
@@ -107,16 +64,7 @@ def _get_consecutive_step(periodicity: Periodicity) -> int:
 def longest_streak_for_habit(
     habit: HabitDTO, completions: Sequence[CompletionDTO]
 ) -> int:
-    """
-    Calculate the longest streak for a specific habit.
-
-    Args:
-        habit: The habit DTO.
-        completions: Sequence of completion DTOs (will be filtered by habit_id).
-
-    Returns:
-        Length of the longest streak (0 if no completions).
-    """
+    """Return one Habit's historical Longest streak, or zero if unstarted."""
     period_ordinals = _period_ordinals_for_habit(habit, completions)
 
     if not period_ordinals:
@@ -143,17 +91,7 @@ def longest_streak_for_habit(
 def longest_streak_across_habits(
     habits: Sequence[HabitDTO], completions: Sequence[CompletionDTO]
 ) -> LongestStreakDTO:
-    """
-    Find the longest streak across all habits.
-
-    Args:
-        habits: Sequence of habit DTOs.
-        completions: Sequence of completion DTOs.
-
-    Returns:
-        LongestStreakDTO with the best streak information.
-        If no habits exist or no completions, returns length 0 with None fields.
-    """
+    """Find the greatest Longest streak among the supplied Habits."""
     if not habits:
         return LongestStreakDTO(
             length=0, habit_id=None, habit_name=None, periodicity=None

@@ -1,7 +1,7 @@
 [project]
-name = "python-habit-tracker"
+name = "Habits.py"
 version = "0.1.0"
-description = "Add your description here"
+description = "Track Daily and Weekly Habits from the command line"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
@@ -24,7 +24,6 @@ dev = [
 
 [project.scripts]
 habit = "src.main:app"
-habits = "src.main:app"
 
 [build-system]
 requires = ["hatchling"]

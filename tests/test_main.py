@@ -106,6 +106,7 @@ def test_help_lists_flat_commands_in_purpose_groups() -> None:
     assert 'Manage user profiles' not in help_text
     assert 'profile create' not in help_text
     assert 'profile switch' not in help_text
+    assert 'start (deprecated)' not in help_text.lower()
 
 
 def test_long_and_short_options_match_the_approved_contract() -> None:

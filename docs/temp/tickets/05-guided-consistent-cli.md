@@ -29,7 +29,7 @@
 
 ## Completion criteria
 
-- [x] `habit` and `habits` are the only installed executables and the obsolete command hierarchy is gone.
+- [x] `habit` is the only installed executable and the obsolete command hierarchy is gone.
 - [x] Every core action has a tested explicit form, while prompts appear only in interactive use.
 - [x] The home screen, habit lifecycle, stats, XP, settings, and seeding use one presentation convention.
 - [x] Bare `habit` supports both interactive-terminal and read-only non-interactive behavior.
