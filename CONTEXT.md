@@ -38,7 +38,7 @@ The machine's current system time, which determines the current Daily or Weekly 
 _Avoid_: Profile timezone, configured timezone
 
 **Completion**:
-A record that a habit was done during a period. A habit has at most one completion in each period.
+A record that a habit was done during a period and earned one XP. A habit has at most one completion in each period.
 _Avoid_: Check-in, check-off, task completion
 
 **Due habit**:
