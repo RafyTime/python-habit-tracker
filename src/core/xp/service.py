@@ -32,7 +32,7 @@ class XPService:
     def award_habit_completion(
         self, session: Session, profile_id: int, habit_id: int, completion_id: int
     ) -> XPEvent:
-        """Award one XP once for a persisted Completion."""
+        """Add one XP once for a flushed Completion; the caller owns the commit."""
         # Check if XP already awarded for this completion
         existing = session.exec(
             select(XPEvent).where(XPEvent.completion_id == completion_id)
@@ -50,8 +50,6 @@ class XPService:
             completion_id=completion_id,
         )
         session.add(xp_event)
-        session.commit()
-        session.refresh(xp_event)
 
         return xp_event
 
@@ -62,7 +60,7 @@ class XPService:
         habit_id: int,
         streak_length: int,
     ) -> list[XPEvent]:
-        """Claim each reached Milestone once for this Habit identity."""
+        """Add each reached Milestone once; the caller owns the commit."""
         newly_awarded: list[XPEvent] = []
 
         for target in MILESTONE_STREAK_TARGETS:
@@ -89,8 +87,6 @@ class XPService:
                 completion_id=None,
             )
             session.add(xp_event)
-            session.commit()
-            session.refresh(xp_event)
             newly_awarded.append(xp_event)
 
         return newly_awarded

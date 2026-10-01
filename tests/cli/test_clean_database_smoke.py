@@ -11,11 +11,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 def _run(database: Path, *args: str) -> str:
     environment = os.environ.copy()
     environment['DATABASE_URL'] = f'sqlite:///{database}'
+    environment['PYTHONUTF8'] = '1'
     result = subprocess.run(
         [sys.executable, '-m', 'src.main', *args],
         cwd=PROJECT_ROOT,
         env=environment,
         capture_output=True,
+        input='',
+        encoding='utf-8',
         text=True,
         check=False,
     )

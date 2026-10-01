@@ -3,7 +3,6 @@
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from sqlmodel import Session, select
 from sqlmodel.sql.expression import col
@@ -27,10 +26,7 @@ from src.core.models import (
     require_persisted_id,
 )
 from src.core.profile.service import ProfileService
-
-if TYPE_CHECKING:
-    from src.core.xp.service import XPService
-
+from src.core.xp.service import XPService
 
 MAX_ICON_LENGTH = 8
 
@@ -95,10 +91,12 @@ class HabitService:
         Args:
             session_factory: A callable that returns a generator yielding a Session.
                             Compatible with the get_session() function pattern.
-            xp_service: Optional XP service for awarding XP on completions.
+            xp_service: XP award collaborator. Defaults to XPService.
         """
         self._session_factory = session_factory
-        self._xp_service = xp_service
+        self._xp_service = (
+            xp_service if xp_service is not None else XPService(session_factory)
+        )
 
     def _get_session(self) -> Session:
         """Get a database session from the factory."""
@@ -371,63 +369,58 @@ class HabitService:
         self, habit_id: int, when: datetime | None = None
     ) -> tuple[Completion, list[XPEvent]]:
         """Record one Completion per Period and award any newly reached Milestones."""
-        session = self._get_session()
-        profile = self._get_profile(session)
-        profile_id = require_persisted_id(profile.id, 'Profile')
+        sessions = self._session_factory()
+        session = next(sessions)
+        try:
+            profile = self._get_profile(session)
+            profile_id = require_persisted_id(profile.id, 'Profile')
+            habit = self._owned_habit(session, profile_id, habit_id)
+            if not habit.is_active:
+                raise HabitArchived(habit_id)
 
-        habit = session.get(Habit, habit_id)
-        if not habit or habit.profile_id != profile_id:
-            raise HabitNotFound(habit_id=habit_id)
+            when = when if when is not None else datetime.now()
+            period_key = _compute_period_key(when, habit.periodicity)
+            existing = session.exec(
+                select(Completion).where(
+                    Completion.habit_id == habit_id,
+                    Completion.period_key == period_key,
+                )
+            ).first()
+            if existing:
+                raise HabitAlreadyCompletedForPeriod(habit_id, period_key)
 
-        if not habit.is_active:
-            raise HabitArchived(habit_id)
-
-        if when is None:
-            when = datetime.now()
-
-        period_key = _compute_period_key(when, habit.periodicity)
-
-        # Check if already completed for this period
-        statement = select(Completion).where(
-            Completion.habit_id == habit_id,
-            Completion.period_key == period_key,
-        )
-        existing = session.exec(statement).first()
-
-        if existing:
-            raise HabitAlreadyCompletedForPeriod(habit_id, period_key)
-
-        # Create completion
-        completion = Completion(
-            habit_id=habit_id,
-            completed_at=when,
-            period_key=period_key,
-        )
-        session.add(completion)
-        session.commit()
-        session.refresh(completion)
-        completion_id = require_persisted_id(completion.id, 'Completion')
-
-        milestone_events: list[XPEvent] = []
-
-        # Award XP if service is available
-        if self._xp_service:
+            completion = Completion(
+                habit_id=habit_id, completed_at=when, period_key=period_key
+            )
+            session.add(completion)
+            session.flush()
+            completion_id = require_persisted_id(completion.id, 'Completion')
             self._xp_service.award_habit_completion(
                 session, profile_id, habit_id, completion_id
             )
-            session.commit()
-
-            streak = self.streak_for_habit(habit)
+            completions = session.exec(
+                select(Completion).where(Completion.habit_id == habit_id)
+            ).all()
+            streak = longest_streak_for_habit(
+                habit_to_dto(habit),
+                [completion_to_dto(item) for item in completions],
+            )
             milestone_events = self._xp_service.award_milestone_xp(
                 session, profile_id, habit_id, streak
             )
-            if milestone_events:
-                session.commit()
-
-        session.refresh(completion)
-        for event in milestone_events:
-            session.refresh(event)
-        return (completion, milestone_events)
+            session.commit()
+            session.refresh(completion)
+            for award in milestone_events:
+                session.refresh(award)
+            return completion, milestone_events
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            # A generator owns its Session; iter([session]) leaves lifetime to the caller.
+            close = getattr(sessions, 'close', None)
+            if close is not None:
+                close()
 
     def get_due_habits(self, when: datetime | None = None) -> list[Habit]:
         """Return Active Habits without a Completion in the local current Period."""

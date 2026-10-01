@@ -233,6 +233,12 @@ def test_complete_habit_creates_completion(session: Session, single_profile: Pro
     # Verify in DB
     db_completion = session.get(Completion, completion.id)
     assert db_completion is not None
+    xp_events = list(
+        session.exec(select(XPEvent).where(XPEvent.completion_id == completion.id))
+    )
+    assert len(xp_events) == 1
+    assert xp_events[0].amount == 1
+    assert xp_events[0].reason == 'HABIT_COMPLETION'
 
 
 def test_complete_habit_twice_same_period_raises_error(

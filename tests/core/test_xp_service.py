@@ -37,6 +37,8 @@ def test_award_habit_completion_creates_event(
     assert xp_event.completion_id == completion.id
 
     # Verify in DB
+    session.commit()
+    session.refresh(xp_event)
     db_event = session.get(XPEvent, xp_event.id)
     assert db_event is not None
 
@@ -189,6 +191,7 @@ def test_award_milestone_xp_when_streak_hits_target(
     events = service.award_milestone_xp(
         session, single_profile.id, habit.id, streak_length=3
     )
+    session.commit()
 
     assert len(events) == 1
     assert events[0].amount == 5
@@ -212,6 +215,7 @@ def test_award_milestone_xp_idempotent(session: Session, single_profile: Profile
     events2 = service.award_milestone_xp(
         session, single_profile.id, habit.id, streak_length=7
     )
+    session.commit()
 
     assert len(events1) == 2  # 3 and 7
     assert len(events2) == 0  # already claimed
@@ -246,6 +250,7 @@ def test_award_milestone_xp_awards_next_milestone_later(
     events2 = service.award_milestone_xp(
         session, single_profile.id, habit.id, streak_length=7
     )
+    session.commit()
 
     assert len(events1) == 1  # 3
     assert len(events2) == 1  # 7 only (3 already claimed)
