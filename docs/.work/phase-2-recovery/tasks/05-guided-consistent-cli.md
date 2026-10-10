@@ -2,7 +2,7 @@
 
 **What to build:** Replace the nested and inconsistent CLI with the agreed `habit` command contract, shared presentation system, small interactive home screen, and Quick start flow. Preserve complete explicit commands for documentation and automation.
 
-**Sources:** [Guided CLI experience specification](../cli-experience-spec.md); [CLI experience polish specification](../cli-polish-spec.md)
+**Sources:** [Guided CLI experience specification](../../../temp/cli-experience-spec.md); [CLI experience polish specification](../../../temp/cli-polish-spec.md)
 
 **Blocked by:** 03 - Offer clear archive and permanent-delete habit lifecycles.
 

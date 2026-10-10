@@ -148,4 +148,4 @@ Keep explicit commands for every core action. Add optional habit icons, globally
 - The specification deliberately treats the root CLI and pure analytics as the two observable testing seams. New presentation or orchestration helpers should be tested through those seams unless they contain independently meaningful pure logic.
 - Local SQLite databases are disposable during development. Schema changes may replace the database instead of preserving historical migrations, provided the application code and schema remain aligned. Runtime commands still follow their documented data-safety rules.
 - Agents working on user-facing CLI layout or copy may consult the optional [CLI output examples](./cli-output-examples.md). The examples illustrate the intended presentation but do not add requirements to this specification.
-- Always check CONTEXT.md to make proper use of the stablished domain language.
+- Always check GLOSSARY.md to make proper use of the stablished domain language.

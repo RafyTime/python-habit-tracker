@@ -121,4 +121,4 @@ Expand Quick start into a short guided practice. It uses the real Add, Done, Tod
 - The agreed implementation slices will be captured separately as follow-up tickets under the guided CLI work.
 - The root CLI and pure Analytics functions remain the only intended testing seams.
 - The user guide and Phase 2 delivery material should describe the final behavior after implementation.
-- Always check `CONTEXT.md` for the project's canonical domain language.
+- Always check `GLOSSARY.md` for the project's canonical domain language.

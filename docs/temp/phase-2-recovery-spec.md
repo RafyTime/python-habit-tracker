@@ -97,4 +97,4 @@ The primary seam is the command line: commands persist state, then return clear 
 - Timezone handling beyond the current local-calendar baseline remains undecided. A later specification may define a user-configured timezone, a system-derived default, or behavior when that timezone changes; this specification neither promises nor forbids that extension.
 - The full user guide should be practical rather than exhaustive: installation, first run, command examples, habit lifecycle, analytics, fixture data, and troubleshooting.
 - The Phase 2 presentation should be 5-10 customer-facing slides and contain visual evidence of the real, final implementation.
-- Always check CONTEXT.md to make proper use of the stablished domain language.
+- Always check GLOSSARY.md to make proper use of the stablished domain language.
