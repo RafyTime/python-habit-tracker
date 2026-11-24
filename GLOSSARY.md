@@ -90,7 +90,7 @@ Experience points awarded for habit progress and used to show motivational level
 _Avoid_: Score, points
 
 **XP event**:
-A historical XP award associated with a habit. Archiving retains its XP events, while permanent deletion removes them.
+A historical award of one XP for a Completion or a bonus for a Milestone. Archiving retains a habit's XP events, while permanent deletion removes them.
 _Avoid_: Reward record, XP log entry
 
 **Level**:
