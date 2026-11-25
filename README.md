@@ -3,94 +3,62 @@
 [![Test](https://github.com/RafyTime/python-habit-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/RafyTime/python-habit-tracker/actions/workflows/ci.yml)
 [![Coverage](https://coverage-badge.samuelcolvin.workers.dev/RafyTime/python-habit-tracker.svg)](https://coverage-badge.samuelcolvin.workers.dev/redirect/RafyTime/python-habit-tracker)
 
-A simple command-line habit tracker built with Python and Typer. Part of my Portfolio Project for IU **Object-Oriented and Functional Programming with Python**.
+Track daily and weekly habits, review streaks, and earn XP from the terminal.
+This Python and Typer app is my portfolio project for IU's **Object-Oriented and Functional Programming with Python** course.
 
-## Table of Contents
+[Set up the tracker](#quick-start) or [explore four weeks of sample data](#evaluate-with-sample-data).
 
-- [Get Running](#get-running)
-- [Everyday Commands](#everyday-commands)
-- [Evaluate with Sample Data](#evaluate-with-sample-data)
-- [Verify the Project](#verify-the-project)
-- [Documentation](#documentation)
+## Quick start
 
-## Get Running
-
-**Required**: You need Python 3.14 or later and [uv](https://docs.astral.sh/uv/).
+You'll need Git, Python 3.14 or later, and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone https://github.com/RafyTime/python-habit-tracker.git
 cd python-habit-tracker
 uv sync
-```
-
-`uv run habit ...` is the simplest way to run a command because uv prepares
-the project environment for you:
-
-```bash
 uv run habit today
 ```
 
-Once `.venv` is active, you can use `habit ...` directly. VS Code, Cursor, and
-JetBrains integrated terminals commonly activate it for you. Otherwise,
-activate it yourself:
+A fresh tracker shows “No habits yet.” Add a daily habit, record a completion,
+and check its stats:
 
 ```bash
-# PowerShell
-.venv\Scripts\Activate.ps1
-
-# bash or zsh
-source .venv/bin/activate
+uv run habit add "Read 10 pages" --every daily
+uv run habit done "Read 10 pages"
+uv run habit stats "Read 10 pages"
 ```
 
-The installed command is `habit`.
+The completion earns 1 XP. The stats show one completion and a longest streak
+of one day.
 
-## Everyday commands
+## Evaluate with sample data
+
+From the project directory, seed an empty tracker to explore five daily and
+weekly habits with four weeks of completions and XP history:
 
 ```bash
-# See Habits that are Due today or this week.
-habit today
-
-# Add a Habit. Use daily, day, weekly, or week for --every.
-habit add "Read 10 pages" --every day
-
-# Record this Period's Completion.
-habit done "Read 10 pages"
-
-# Review one Habit's progress.
-habit stats "Read 10 pages"
-
-# List active Habits, including their IDs and current progress.
-habit list
+uv run habit seed
+uv run habit
 ```
 
-Run bare `habit` in an interactive terminal to open the interactive home.
-Without interactive input, it prints the same read-only Due snapshot as
-`habit today`.
+The second command opens the interactive home in a terminal. Choose **View
+stats** to explore the seeded history. If you already have habits, the seed
+command asks before mixing in sample data. The
+[user guide](docs/USER_GUIDE.md#sample-data) explains how to use a separate database.
 
-## Evaluate with Sample data
+![Seeded interactive home showing daily and weekly habits due, level progress, and the action menu](docs/phase_2/SEEDED_INTERACTIVE_HOME.png)
 
-Load five predefined Daily and Weekly Habits with four weeks of Completion
-and XP history:
+The screenshot uses sample data seeded one week earlier so the habits are due again.
 
-```bash
-habit seed
-```
+## Explore and verify the project
 
-On a tracker that already has Habits, the command asks before mixing Sample
-data with them.
+- [User guide](docs/USER_GUIDE.md) covers everyday commands, settings, and troubleshooting. Run `uv run habit --help` for the command list.
+- [`src/main.py`](src/main.py) registers the commands for the installed `habit` CLI.
+- [`src/core/`](src/core/) contains habit tracking, analytics, and XP logic.
+- [Phase 2 development notes](docs/phase_2/DEVELOPMENT_PHASE.md) describe how the project evolved.
 
-## Verify the project
-
-Run the complete local quality gate:
+Run the local quality checks for formatting, linting, types, tests, and coverage:
 
 ```bash
 uv run scripts/quality.py
 ```
-
-It checks formatting, linting, source types, tests, and coverage.
-
-## Documentation
-
-Generated help is always available with `habit --help` or
-`habit COMMAND --help`. For a more detailed guide, including setup, everyday use, lifecycle
-actions, Sample data, and troubleshooting, see the [User Guide](docs/USER_GUIDE.md).
